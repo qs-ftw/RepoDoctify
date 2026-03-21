@@ -1,4 +1,5 @@
 from .analysis import RepositoryAnalysis, analyze_repository
+from .cli import main as cli_main
 from .composer import compose_docset
 from .feishu_handoff import FeishuDependencyResult, build_feishu_handoff_payload, ensure_feishu_dependencies
 from .html_renderer import HtmlRenderResult, render_html_docset
@@ -13,7 +14,7 @@ from .runtime import (
     run_repodoctify,
 )
 from .models import CrossLinkMap, DocumentSpec, DocsetPlan, RepositoryProfile, SectionNode
-from .workspace import ensure_external_workspace
+from .workspace import ensure_external_workspace, find_latest_workspace, resolve_workspace_root
 
 __all__ = [
     "COMMAND_FEISHU",
@@ -33,10 +34,13 @@ __all__ = [
     "analyze_repository",
     "build_feishu_handoff_payload",
     "build_default_docset_plan",
+    "cli_main",
     "compose_docset",
     "ensure_external_workspace",
     "ensure_feishu_dependencies",
+    "find_latest_workspace",
     "render_html_docset",
     "render_markdown_docset",
+    "resolve_workspace_root",
     "run_repodoctify",
 ]

@@ -64,6 +64,17 @@ def test_html_command_writes_html_pages(tmp_path):
     assert (result.workspace / "html" / "homepage.html").exists()
 
 
+def test_runtime_can_reuse_existing_workspace(tmp_path):
+    repo = _make_repo(tmp_path)
+
+    first_result = run_repodoctify(repo, run_id="seed")
+    second_result = run_repodoctify(repo, command=COMMAND_HTML, reuse_latest=True)
+
+    assert second_result.workspace == first_result.workspace
+    assert (first_result.workspace / "md" / "README.md").exists()
+    assert (first_result.workspace / "html" / "index.html").exists()
+
+
 def test_feishu_command_requires_lark_mcp(tmp_path):
     repo = _make_repo(tmp_path)
 

@@ -41,6 +41,11 @@ This default output should include:
 
 All output modes should share the same intermediate result.
 
+For local execution, the Python package should expose a stable command surface
+through `python -m repodoctify` and a `repodoctify` CLI entrypoint. ASCII
+aliases such as `plan`, `md`, `html`, and `feishu` are acceptable for the
+command layer as long as they preserve the same user-facing semantics.
+
 ## Output Isolation Rule
 
 By default, `RepoDoctify` must treat the target repository as read-only input.
@@ -50,6 +55,9 @@ or temporary render artifacts into the current repository unless the user
 explicitly asks for that behavior.
 
 Default outputs belong in a repository-external isolated workspace.
+
+If the user explicitly wants to reuse an existing external workspace, prefer a
+safe resume path instead of recomputing plan and IR unnecessarily.
 
 ## Dependency Rules
 
@@ -81,4 +89,3 @@ Load these references as needed:
 
 `feishu-knowledge-ops` remains the Feishu-specific backend and publication
 specialist. `RepoDoctify` should not duplicate Feishu block or publishing logic.
-

@@ -37,6 +37,11 @@ The current v1 helper flow is:
 
 The main Python entrypoint is `repodoctify.run_repodoctify(...)`.
 
+The main CLI entrypoints are:
+
+- `python -m repodoctify`
+- `repodoctify`
+
 It always writes into an external workspace with these subdirectories:
 
 - `plan/`
@@ -45,6 +50,18 @@ It always writes into an external workspace with these subdirectories:
 - `html/`
 - `publish/`
 - `logs/`
+
+The CLI supports:
+
+- default no-arg behavior -> full Markdown docset
+- `plan` -> docset structure only
+- `md` -> full Markdown output
+- `html` -> full HTML output
+- `feishu` -> Feishu handoff
+
+The runtime and CLI also support `--reuse-latest` so a later render step can
+reuse an existing external workspace and shared IR instead of recomputing from
+scratch.
 
 ## Local Development
 
@@ -58,6 +75,13 @@ Install the local skill copy with:
 
 ```bash
 python3 scripts/install_local_skill.py
+```
+
+Run the CLI with:
+
+```bash
+python -m repodoctify --repo /path/to/repo
+python -m repodoctify html --repo /path/to/repo --reuse-latest
 ```
 
 ## Output Targets
