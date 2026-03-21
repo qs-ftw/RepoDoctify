@@ -1,0 +1,10 @@
+[project]
+name = "repodoctify"
+version = "0.1.0"
+description = "Repository learning docset generation helpers for RepoDoctify"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
