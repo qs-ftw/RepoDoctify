@@ -51,6 +51,8 @@ def test_local_install_helper_exists():
 def test_feishu_script_wrapper_uses_repodoctify_library():
     text = Path("scripts/publish_feishu_diagram_round1.py").read_text(encoding="utf-8")
     assert "repodoctify.feishu" in text
+    bridge_text = Path("scripts/publish_python_bridge_doc.py").read_text(encoding="utf-8")
+    assert "repodoctify.feishu" in bridge_text
 
 
 def test_install_helper_targets_skill_directory_name():

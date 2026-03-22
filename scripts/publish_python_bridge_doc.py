@@ -8,7 +8,6 @@ import re
 import sys
 import time
 import urllib.parse
-import urllib.request
 import urllib.error
 import uuid
 from dataclasses import dataclass
@@ -26,6 +25,7 @@ from feishu_mermaid_postprocessor import (
     delete_document_child_range,
     post_json,
 )
+from repodoctify.feishu import get_json, json_request, patch_json
 from lark_mcp_user_token_wrapper import (
     DEFAULT_CONFIG_PATH,
     DEFAULT_STORE_PATH,
@@ -80,37 +80,6 @@ class CreatedBoardJob:
     board_id: str
     nodes: list[dict]
     create_result: dict
-
-
-def get_json(url: str, bearer_token: str) -> dict:
-    request = urllib.request.Request(
-        url,
-        headers={"Authorization": f"Bearer {bearer_token}"},
-        method="GET",
-    )
-    with urllib.request.urlopen(request, timeout=30) as response:
-        payload = json.loads(response.read().decode())
-    if payload.get("code") != 0:
-        raise RuntimeError(f"Feishu request failed: {payload}")
-    return payload
-
-
-def patch_json(url: str, data: dict, bearer_token: str) -> dict:
-    request = urllib.request.Request(
-        url,
-        data=json.dumps(data).encode(),
-        headers={
-            "Authorization": f"Bearer {bearer_token}",
-            "Content-Type": "application/json",
-        },
-        method="PATCH",
-    )
-    with urllib.request.urlopen(request, timeout=30) as response:
-        payload = json.loads(response.read().decode())
-    if payload.get("code") != 0:
-        raise RuntimeError(f"Feishu request failed: {payload}")
-    return payload
-
 
 def extract_plain_text(block_item: dict) -> str:
     parts: list[str] = []
@@ -300,30 +269,6 @@ def create_document_child_blocks(
     )
     return post_json(url, {"children": children, "index": index}, bearer_token)
 
-
-def _json_request(
-    url: str,
-    bearer_token: str,
-    *,
-    method: str = "GET",
-    data: dict | None = None,
-) -> dict:
-    request = urllib.request.Request(
-        url,
-        headers={
-            "Authorization": f"Bearer {bearer_token}",
-            "Content-Type": "application/json",
-        },
-        method=method,
-        data=(json.dumps(data).encode("utf-8") if data is not None else None),
-    )
-    with urllib.request.urlopen(request, timeout=60) as response:
-        payload = json.loads(response.read().decode())
-    if payload.get("code") != 0:
-        raise RuntimeError(f"Feishu request failed: {payload}")
-    return payload
-
-
 def create_board_nodes(
     board_id: str,
     nodes: list[dict],
@@ -335,11 +280,11 @@ def create_board_nodes(
     )
     url = f"https://open.feishu.cn/open-apis/board/v1/whiteboards/{board_id}/nodes?{query}"
     try:
-        _json_request(url, primary_token, method="POST", data={"nodes": nodes})
+        json_request(url, primary_token, method="POST", data={"nodes": nodes})
     except Exception:
         if not fallback_token:
             raise
-        _json_request(url, fallback_token, method="POST", data={"nodes": nodes})
+        json_request(url, fallback_token, method="POST", data={"nodes": nodes})
 
 
 def list_board_nodes(
@@ -352,11 +297,11 @@ def list_board_nodes(
         f"{board_id}/nodes?{urllib.parse.urlencode({'user_id_type': 'open_id'})}"
     )
     try:
-        payload = _json_request(url, primary_token)
+        payload = json_request(url, primary_token)
     except Exception:
         if not fallback_token:
             raise
-        payload = _json_request(url, fallback_token)
+        payload = json_request(url, fallback_token)
     return payload.get("data", {}).get("nodes", [])
 
 
@@ -367,11 +312,11 @@ def update_board_theme(
 ) -> None:
     url = f"https://open.feishu.cn/open-apis/board/v1/whiteboards/{board_id}/update_theme"
     try:
-        _json_request(url, primary_token, method="POST", data={"theme": BOARD_THEME})
+        json_request(url, primary_token, method="POST", data={"theme": BOARD_THEME})
     except Exception:
         if not fallback_token:
             raise
-        _json_request(url, fallback_token, method="POST", data={"theme": BOARD_THEME})
+        json_request(url, fallback_token, method="POST", data={"theme": BOARD_THEME})
 
 
 def create_board_block_job(

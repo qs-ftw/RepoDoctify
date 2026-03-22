@@ -155,3 +155,8 @@ The Feishu runtime now distinguishes:
 - `plan_only` for publish planning
 - `dry_run` for execution-ready validation without remote writes
 - `execute` for the future remote-write path
+
+The Feishu request model also supports explicit existing-document targeting
+through `feishu_target_doc_ids`, so a caller can tell RepoDoctify which logical
+doc should update which existing Feishu document instead of relying only on
+title- or role-based defaults.

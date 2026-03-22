@@ -14,6 +14,7 @@ from .feishu_handoff import (
     ensure_feishu_dependencies,
     probe_feishu_auth_state,
 )
+from .feishu import delete_json, get_json, json_request, patch_json, post_json
 from .html_renderer import HtmlRenderResult, render_html_docset
 from .markdown_renderer import MarkdownRenderResult, render_markdown_docset
 from .planning import build_default_docset_plan
@@ -47,8 +48,13 @@ __all__ = [
     "FeishuPublishTarget",
     "FeishuVerificationCheck",
     "FeishuVerificationPlan",
+    "delete_json",
+    "get_json",
+    "json_request",
     "HtmlRenderResult",
     "MarkdownRenderResult",
+    "patch_json",
+    "post_json",
     "RepoDoctifyRequest",
     "RepoDoctifyRunResult",
     "RepositoryAnalysis",

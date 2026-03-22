@@ -48,6 +48,31 @@ def test_feishu_publish_plan_marks_homepage_last():
     assert plan["documents"][1]["publish_mode"] == FeishuPublishMode.UPDATE_HOMEPAGE_LAST.value
 
 
+def test_feishu_publish_plan_uses_requested_target_doc_ids():
+    plan = build_feishu_publish_plan(
+        RepositoryProfile(repo_label="demo", source_path="/tmp/demo"),
+        [
+            DocumentSpec(doc_id="homepage", title="Homepage", role="homepage"),
+            DocumentSpec(doc_id="overview", title="Overview", role="overview"),
+        ],
+        manifest_path="/tmp/out/manifest.json",
+        requested_target_doc_ids={
+            "homepage": "doc_homepage_123",
+            "overview": "doc_overview_456",
+        },
+    )
+
+    overview_target = plan["documents"][0]
+    homepage_target = plan["documents"][1]
+
+    assert overview_target["doc_id"] == "overview"
+    assert overview_target["target_document_id"] == "doc_overview_456"
+    assert overview_target["target_source"] == "request"
+    assert overview_target["publish_mode"] == FeishuPublishMode.UPDATE_IN_PLACE.value
+    assert homepage_target["target_document_id"] == "doc_homepage_123"
+    assert homepage_target["target_source"] == "request"
+
+
 def test_feishu_publish_plan_can_be_saved_as_json(tmp_path):
     plan = build_feishu_publish_plan(
         RepositoryProfile(repo_label="demo", source_path="/tmp/demo"),

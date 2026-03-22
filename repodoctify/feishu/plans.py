@@ -28,6 +28,9 @@ class FeishuPublishTarget:
     publish_mode: FeishuPublishMode
     update_strategy: str
     verify_as: str
+    target_document_id: str | None = None
+    target_source: str = "new_document"
+    target_lookup_key: str | None = None
     requires_user_auth: bool = False
 
 
@@ -67,8 +70,10 @@ def build_feishu_publish_plan(
     docs: list[DocumentSpec],
     manifest_path: str | Path,
     execution_mode: FeishuExecutionMode = FeishuExecutionMode.PLAN_ONLY,
+    requested_target_doc_ids: dict[str, str] | None = None,
 ) -> dict:
-    targets = [_target_for_document(doc) for doc in docs]
+    requested_target_doc_ids = requested_target_doc_ids or {}
+    targets = [_target_for_document(doc, requested_target_doc_ids) for doc in docs]
     ordered_targets = _order_targets(targets)
     verification = _build_verification_plan(ordered_targets)
     return {
@@ -86,6 +91,9 @@ def build_feishu_publish_plan(
                 "publish_mode": target.publish_mode.value,
                 "update_strategy": target.update_strategy,
                 "verify_as": target.verify_as,
+                "target_document_id": target.target_document_id,
+                "target_source": target.target_source,
+                "target_lookup_key": target.target_lookup_key,
                 "requires_user_auth": target.requires_user_auth,
             }
             for target in ordered_targets
@@ -106,15 +114,29 @@ def build_feishu_verification_summary(plan: dict) -> dict:
     }
 
 
-def _target_for_document(document: DocumentSpec) -> FeishuPublishTarget:
+def _resolve_requested_target_document_id(
+    document: DocumentSpec,
+    requested_target_doc_ids: dict[str, str],
+) -> str | None:
+    return requested_target_doc_ids.get(document.doc_id) or requested_target_doc_ids.get(document.role)
+
+
+def _target_for_document(
+    document: DocumentSpec,
+    requested_target_doc_ids: dict[str, str],
+) -> FeishuPublishTarget:
+    requested_target_document_id = _resolve_requested_target_document_id(document, requested_target_doc_ids)
     mode = choose_feishu_update_strategy(
         role=document.role,
-        target_exists=document.role != "overview",
+        target_exists=document.role != "overview" or requested_target_document_id is not None,
         structure_changed=document.role in {"stack", "module_map"},
         diagrams_changed=document.role in {"bridge", "stack"},
         tables_changed=document.role in {"boundary_guide"},
         homepage_refresh_required=document.role == "homepage",
     )
+    target_source = "request" if requested_target_document_id else "docset_plan"
+    if mode == FeishuPublishMode.CREATE_NEW:
+        target_source = "new_document"
     if mode == FeishuPublishMode.UPDATE_HOMEPAGE_LAST:
         return FeishuPublishTarget(
             doc_id=document.doc_id,
@@ -122,6 +144,9 @@ def _target_for_document(document: DocumentSpec) -> FeishuPublishTarget:
             publish_mode=mode,
             update_strategy="child_docs_first",
             verify_as="homepage",
+            target_document_id=requested_target_document_id,
+            target_source=target_source,
+            target_lookup_key=document.doc_id,
             requires_user_auth=True,
         )
     strategy = {
@@ -136,6 +161,9 @@ def _target_for_document(document: DocumentSpec) -> FeishuPublishTarget:
         publish_mode=mode,
         update_strategy=strategy,
         verify_as="standard_doc",
+        target_document_id=requested_target_document_id,
+        target_source=target_source,
+        target_lookup_key=None if mode == FeishuPublishMode.CREATE_NEW else document.doc_id,
         requires_user_auth=mode != FeishuPublishMode.CREATE_NEW,
     )
 

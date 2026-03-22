@@ -190,3 +190,34 @@ def test_run_repodoctify_request_supports_feishu_dry_run_mode(tmp_path):
     assert result.feishu_execution_mode == FeishuExecutionMode.DRY_RUN.value
     assert result.feishu_publish_plan is not None
     assert result.feishu_auth_state["recommended_action"] == "ready_for_dry_run"
+
+
+def test_run_repodoctify_request_passes_requested_feishu_targets_into_publish_plan(tmp_path):
+    repo = _make_repo(tmp_path)
+
+    request = RepoDoctifyRequest(
+        requested_repo=repo,
+        current_dir=tmp_path,
+        command=COMMAND_FEISHU,
+        installed_tools={"lark-mcp"},
+        run_id="feishu-targets",
+        feishu_mode=FeishuExecutionMode.DRY_RUN.value,
+        feishu_target_doc_ids={
+            "homepage": "doc_homepage_123",
+            "overview": "doc_overview_456",
+        },
+    )
+
+    result = run_repodoctify_request(request)
+
+    overview_target = next(
+        document for document in result.feishu_publish_plan["documents"] if document["doc_id"] == "overview"
+    )
+    homepage_target = next(
+        document for document in result.feishu_publish_plan["documents"] if document["doc_id"] == "homepage"
+    )
+
+    assert overview_target["target_document_id"] == "doc_overview_456"
+    assert overview_target["target_source"] == "request"
+    assert homepage_target["target_document_id"] == "doc_homepage_123"
+    assert result.feishu_auth_state["target_doc_probe_attempted"] is True

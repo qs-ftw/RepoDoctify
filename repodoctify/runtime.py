@@ -57,6 +57,7 @@ class RepoDoctifyRequest:
     strict_conflict_check: bool = False
     reading_goal: str | None = None
     feishu_mode: str | None = None
+    feishu_target_doc_ids: dict[str, str] | None = None
 
 
 def resolve_repo_decision(
@@ -201,6 +202,7 @@ def run_repodoctify_request(request: RepoDoctifyRequest) -> RepoDoctifyRunResult
         require_user_access_token=feishu_mode == FeishuExecutionMode.EXECUTE.value,
         user_token_present=feishu_mode != FeishuExecutionMode.PLAN_ONLY.value,
         user_token_validated=feishu_mode == FeishuExecutionMode.EXECUTE.value,
+        target_doc_probe_attempted=bool(request.feishu_target_doc_ids),
     )
     manifest_path = workspace / "publish" / "manifest.json"
     _write_json(manifest_path, build_docset_manifest(profile, docs))
@@ -209,6 +211,7 @@ def run_repodoctify_request(request: RepoDoctifyRequest) -> RepoDoctifyRunResult
         docs,
         manifest_path=manifest_path,
         execution_mode=FeishuExecutionMode(feishu_mode),
+        requested_target_doc_ids=request.feishu_target_doc_ids,
     )
     publish_plan_path = workspace / "publish" / "feishu-publish-plan.json"
     verification_path = workspace / "publish" / "verification-summary.json"

@@ -121,4 +121,5 @@ Load these references as needed:
 - Feishu publishing rules
 - Feishu update and verification strategy
 - Feishu runtime models for plan-only, dry-run, and execute semantics
+- Feishu target-document planning for request-specified existing docs
 - Feishu helper scripts that make the skill portable

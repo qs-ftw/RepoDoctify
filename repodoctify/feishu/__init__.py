@@ -1,4 +1,5 @@
 from .auth import FeishuAuthState, probe_feishu_auth_state
+from .http import delete_json, get_json, json_request, patch_json, post_json
 from .mermaid import MERMAID_COMPONENT_TYPE_ID, build_mermaid_chart_block, normalize_mermaid
 from .plans import (
     FeishuExecutionMode,
@@ -18,11 +19,16 @@ __all__ = [
     "FeishuPublishTarget",
     "FeishuVerificationCheck",
     "FeishuVerificationPlan",
+    "delete_json",
+    "get_json",
+    "json_request",
     "MERMAID_COMPONENT_TYPE_ID",
     "build_feishu_publish_plan",
     "build_feishu_verification_summary",
     "build_mermaid_chart_block",
     "choose_feishu_update_strategy",
     "normalize_mermaid",
+    "patch_json",
+    "post_json",
     "probe_feishu_auth_state",
 ]
