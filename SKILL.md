@@ -42,6 +42,11 @@ Only ask 1-3 short questions when one of these is missing:
 - whether the user's requested repo conflicts with the current working context
 - a critical reading goal that would materially change the output
 
+Prefer the current working directory as the target repository when it already
+looks like a real repo and the user did not specify another path. If the user
+did specify a different repo, prefer the explicit path and only escalate when a
+strict conflict check is materially useful.
+
 ## Explicit Subcommands
 
 - `规划输出框架`

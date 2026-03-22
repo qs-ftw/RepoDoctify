@@ -87,6 +87,12 @@ The runtime and CLI also support `--reuse-latest` so a later render step can
 reuse an existing external workspace and shared IR instead of recomputing from
 scratch.
 
+Target repository selection stays low-interruption by default:
+
+- if `--repo` is omitted, the current working directory is treated as the target
+- if an explicit repo path is passed, that path wins
+- a stricter conflict follow-up can be layered on top of the shared targeting helper when the caller needs it
+
 ## Local Development
 
 Run tests with:

@@ -13,6 +13,7 @@ from .runtime import (
     RepoDoctifyRunResult,
     run_repodoctify,
 )
+from .targeting import TargetRepoDecision, resolve_target_repo
 from .models import CrossLinkMap, DocumentSpec, DocsetPlan, RepositoryProfile, SectionNode
 from .workspace import ensure_external_workspace, find_latest_workspace, resolve_workspace_root
 
@@ -31,6 +32,7 @@ __all__ = [
     "RepositoryAnalysis",
     "RepositoryProfile",
     "SectionNode",
+    "TargetRepoDecision",
     "analyze_repository",
     "build_feishu_handoff_payload",
     "build_default_docset_plan",
@@ -41,6 +43,7 @@ __all__ = [
     "find_latest_workspace",
     "render_html_docset",
     "render_markdown_docset",
+    "resolve_target_repo",
     "resolve_workspace_root",
     "run_repodoctify",
 ]

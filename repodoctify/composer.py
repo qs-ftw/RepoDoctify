@@ -105,19 +105,20 @@ def _compose_code_reading_path(analysis: RepositoryAnalysis) -> DocumentSpec:
     reading_order: list[str] = []
     if analysis.readme_files:
         reading_order.extend(
-            f"Start with `{name}` to capture the repository contract." for name in analysis.readme_files
+            f"Start with `{name}` to capture the repository contract and the human-facing why behind the code."
+            for name in analysis.readme_files
         )
     reading_order.extend(
-        f"Read `{name}` next to understand the primary implementation surface."
+        f"Read `{name}` next to understand the primary implementation surface and where the real entrypoint hands control to source code."
         for name in analysis.entrypoint_candidates
         if name not in analysis.readme_files and name not in analysis.config_files
     )
     reading_order.extend(
-        f"Use `{name}` to verify intended behavior and edge cases."
+        f"Use `{name}` to verify intended behavior, edge cases, and what change would count as a regression."
         for name in analysis.test_layout[:3]
     )
     reading_order.extend(
-        f"Check `{name}` to understand runtime and packaging assumptions."
+        f"Check `{name}` to understand runtime, packaging, and environment assumptions before you change behavior."
         for name in analysis.config_files
     )
     if not reading_order:
@@ -135,6 +136,7 @@ def _compose_code_reading_path(analysis: RepositoryAnalysis) -> DocumentSpec:
             body=[
                 "Follow the human-facing entrypoint first, then the main source directory, then tests, then config.",
                 "That order keeps the conceptual contract ahead of implementation details.",
+                "In practice, read files that explain why the repository exists before files that explain how each helper works.",
             ],
         ),
     ]
@@ -187,6 +189,7 @@ def _compose_bridge_topics(analysis: RepositoryAnalysis) -> DocumentSpec:
             title="Why These Topics Matter",
             body=[
                 "These topics usually cut across directories or ownership boundaries.",
+                "They often connect workspace layout, package scripts, source entrypoints, and test evidence rather than living in a single file.",
                 "If the generated docset later grows deeper, these are strong candidates for standalone deep-dive docs.",
             ],
         ),
@@ -275,7 +278,8 @@ def _compose_development_guide(analysis: RepositoryAnalysis) -> DocumentSpec:
                 "Read the overview and code-reading-path docs before opening deep modules.",
                 "Use the module map to choose the smallest ownership surface for your change.",
                 "Use tests and configs as the final check before treating an assumption as stable.",
-                "If multiple entrypoint candidates exist, start with the most human-facing file before reading helper modules.",
+                "If multiple entrypoint candidates exist, start with the most human-facing entrypoint before reading helper modules.",
+                "Before editing code, decide which entrypoint, ownership surface, and tests should move together with the change.",
             ],
         ),
         SectionNode(
@@ -289,6 +293,7 @@ def _compose_development_guide(analysis: RepositoryAnalysis) -> DocumentSpec:
                     else "Cross-directory changes usually signal higher coordination cost."
                 ),
                 "If you cannot explain which doc in this set should change alongside code, the code change probably needs more analysis first.",
+                "A safe first implementation usually starts at the smallest ownership surface that can satisfy the change without widening the boundary.",
             ],
         ),
     ]
