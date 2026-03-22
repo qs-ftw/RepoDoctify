@@ -18,6 +18,8 @@ def test_skill_declares_default_behavior_and_subcommands():
     assert "以飞书形式输出全部内容" in text
     assert "lark-mcp" in text
     assert "$repo-doctify" in text
+    assert "Only ask" in text or "only ask" in text
+    assert "1-3" in text or "1 to 3" in text
 
 
 def test_repo_owns_reference_set():
@@ -45,3 +47,6 @@ def test_readme_describes_skill_first_usage():
     text = Path("README.md").read_text(encoding="utf-8")
     assert "$repo-doctify" in text
     assert "Codex skill" in text
+    assert "Python + TS/JS" in text
+    assert "not a good fit yet" in text or "not supported yet" in text
+    assert "examples/" in text

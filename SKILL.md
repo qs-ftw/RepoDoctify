@@ -18,6 +18,9 @@ In Codex, the primary way to use this product is as a skill:
 - manually trigger it with `$repo-doctify`
 - or let Codex dispatch it automatically when the task matches
 
+Only ask follow-up questions when the target repository or critical context is
+actually unclear. Keep the default behavior low-interruption.
+
 ## Default Behavior
 
 If the user triggers `RepoDoctify` without an explicit subcommand, run the
@@ -32,6 +35,12 @@ This default output should include:
 - split Markdown docs
 - a README-style aggregate overview
 - a manifest
+
+Only ask 1-3 short questions when one of these is missing:
+
+- which repository to analyze
+- whether the user's requested repo conflicts with the current working context
+- a critical reading goal that would materially change the output
 
 ## Explicit Subcommands
 

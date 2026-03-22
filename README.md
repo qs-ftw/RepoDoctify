@@ -21,6 +21,20 @@ The primary user-facing entrypoint is the Codex skill itself:
 The Python package in this repo exists to support the skill's internal runtime,
 testing, and local verification. It is not the main user contract.
 
+## Release Focus
+
+The current release target is:
+
+- Python + TS/JS repositories first
+- Markdown as the default primary deliverable
+- low-interruption skill behavior
+
+This repo is not a good fit yet for:
+
+- Feishu-first publishing workflows
+- languages outside Python and TS/JS when repo structure is unusual
+- deep semantic analysis such as full call graphs or AST-level reasoning
+
 ## Intended Default Behavior
 
 With no explicit subcommand, `RepoDoctify` should behave as:
@@ -92,6 +106,16 @@ Use the installed skill from Codex CLI with:
 ```bash
 $repo-doctify
 ```
+
+## Examples
+
+This repository includes lightweight example repos under `examples/`:
+
+- `examples/python-basic`
+- `examples/typescript-basic`
+
+Use them to smoke-test installation and output quality without guessing which
+repo shape the current release is designed to support first.
 
 The bundled CLI remains useful as a developer harness when testing the repo
 outside Codex:
