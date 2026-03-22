@@ -20,13 +20,16 @@ def test_skill_declares_default_behavior_and_subcommands():
     assert "$repo-doctify" in text
     assert "Only ask" in text or "only ask" in text
     assert "1-3" in text or "1 to 3" in text
+    assert "feishu-knowledge-ops" not in text
 
 
 def test_repo_owns_reference_set():
     for rel in [
         "references/repo-docset-framework.md",
         "references/content-patterns.md",
+        "references/bitable-and-permissions.md",
         "references/docset-ir.md",
+        "references/feishu-operations.md",
         "references/markdown-rendering-rules.md",
         "references/html-rendering-rules.md",
         "references/feishu-rendering-handoff.md",
@@ -36,6 +39,12 @@ def test_repo_owns_reference_set():
 
 def test_local_install_helper_exists():
     assert Path("scripts/install_local_skill.py").exists()
+    assert Path("scripts/publish_python_bridge_doc.py").exists()
+    assert Path("scripts/publish_feishu_diagram_round1.py").exists()
+    assert Path("scripts/feishu_mermaid_inspector.py").exists()
+    assert Path("scripts/feishu_mermaid_postprocessor.py").exists()
+    assert Path("scripts/lark_mcp_localhost_auth_server.py").exists()
+    assert Path("scripts/lark_mcp_user_token_wrapper.py").exists()
 
 
 def test_install_helper_targets_skill_directory_name():
@@ -50,3 +59,11 @@ def test_readme_describes_skill_first_usage():
     assert "Python + TS/JS" in text
     assert "not a good fit yet" in text or "not supported yet" in text
     assert "examples/" in text
+    assert "feishu-knowledge-ops" not in text
+
+
+def test_feishu_ownership_reference_points_to_repodoctify():
+    text = Path("references/feishu-rendering-handoff.md").read_text(encoding="utf-8")
+    assert "RepoDoctify" in text
+    assert "owns Feishu-specific publication logic" in text or "owns Feishu publishing logic" in text
+    assert "feishu-knowledge-ops" not in text

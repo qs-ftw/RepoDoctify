@@ -57,7 +57,7 @@ The current v1 helper flow is:
 1. analyze the target repository
 2. build a default docset plan
 3. compose a shared IR
-4. render Markdown or HTML, or prepare a Feishu handoff
+4. render Markdown or HTML, or execute RepoDoctify's Feishu publishing path
 
 The main Python compatibility entrypoint is `repodoctify.run_repodoctify(...)`.
 The skill-facing runtime entrypoint is `repodoctify.run_repodoctify_request(...)`.
@@ -145,3 +145,7 @@ Feishu output is optional and depends on an external `lark-mcp` installation.
 
 If `lark-mcp` is unavailable, the runtime raises a clear dependency error instead
 of blocking Markdown or HTML output.
+
+RepoDoctify owns the Feishu publication plan, update strategy, verification
+rules, and bundled helper scripts. `lark-mcp` remains an external dependency
+for connectivity only.

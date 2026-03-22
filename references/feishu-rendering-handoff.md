@@ -1,6 +1,6 @@
 # Feishu Rendering Handoff
 
-`RepoDoctify` does not implement Feishu-specific publication logic directly.
+`RepoDoctify` owns Feishu publishing logic directly.
 
 ## Ownership Boundary
 
@@ -9,13 +9,10 @@
 - repository methodology
 - shared IR semantics
 - renderer-neutral document meaning
-- Feishu handoff contract
-
-`feishu-knowledge-ops` owns:
-
+- Feishu publish planning
 - Feishu document structure details
-- block mapping
-- table and chart specifics
+- block mapping strategy
+- table, Mermaid, and board specifics
 - publication flow
 - readback verification
 
@@ -26,13 +23,13 @@ Feishu output depends on external `lark-mcp`.
 If `lark-mcp` is not available, `RepoDoctify` should stop and tell the user to
 install it before trying Feishu output again.
 
-## Handoff Payload
+## Publish Plan
 
-The Feishu handoff should provide at least:
+The Feishu publish path should provide at least:
 
 - repository label
 - manifest path
 - document count
 - document titles
-- the fact that publication is delegated to `feishu-knowledge-ops`
-
+- document publish modes
+- verification checks

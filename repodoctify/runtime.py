@@ -6,7 +6,11 @@ from pathlib import Path
 
 from .analysis import analyze_repository
 from .composer import compose_docset
-from .feishu_handoff import build_feishu_handoff_payload, ensure_feishu_dependencies
+from .feishu_handoff import (
+    build_feishu_publish_plan,
+    build_feishu_verification_summary,
+    ensure_feishu_dependencies,
+)
 from .html_renderer import render_html_docset
 from .manifest import build_docset_manifest
 from .markdown_renderer import render_markdown_docset
@@ -33,7 +37,7 @@ class RepoDoctifyRunResult:
     written_files: list[Path]
     resolved_repo_path: Path
     repo_resolution_reason: str
-    handoff_payload: dict | None = None
+    feishu_publish_plan: dict | None = None
 
 
 @dataclass(slots=True)
@@ -188,10 +192,12 @@ def run_repodoctify_request(request: RepoDoctifyRequest) -> RepoDoctifyRunResult
 
     manifest_path = workspace / "publish" / "manifest.json"
     _write_json(manifest_path, build_docset_manifest(profile, docs))
-    handoff_payload = build_feishu_handoff_payload(profile, docs, manifest_path=manifest_path)
-    handoff_path = workspace / "publish" / "feishu-handoff.json"
-    _write_json(handoff_path, handoff_payload)
-    written_files.extend([manifest_path, handoff_path])
+    publish_plan = build_feishu_publish_plan(profile, docs, manifest_path=manifest_path)
+    publish_plan_path = workspace / "publish" / "feishu-publish-plan.json"
+    verification_path = workspace / "publish" / "verification-summary.json"
+    _write_json(publish_plan_path, publish_plan)
+    _write_json(verification_path, build_feishu_verification_summary(publish_plan))
+    written_files.extend([manifest_path, publish_plan_path, verification_path])
     return RepoDoctifyRunResult(
         command=resolved_command,
         workspace=workspace,
@@ -200,7 +206,7 @@ def run_repodoctify_request(request: RepoDoctifyRequest) -> RepoDoctifyRunResult
         written_files=written_files,
         resolved_repo_path=repo,
         repo_resolution_reason=decision.reason,
-        handoff_payload=handoff_payload,
+        feishu_publish_plan=publish_plan,
     )
 
 

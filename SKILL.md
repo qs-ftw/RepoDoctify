@@ -95,6 +95,10 @@ Feishu output depends on an external `lark-mcp` installation. If the user asks
 for Feishu output and `lark-mcp` is unavailable, stop and tell the user to
 install `lark-mcp` first.
 
+RepoDoctify itself owns the Feishu publication strategy, update rules, and
+verification flow. Treat `lark-mcp` as the connectivity dependency, not as the
+place where product behavior lives.
+
 ## Reference Set
 
 Load these references as needed:
@@ -113,7 +117,6 @@ Load these references as needed:
 - shared IR semantics
 - Markdown and HTML rendering rules
 - README aggregation rules
-- Feishu handoff rules
-
-`feishu-knowledge-ops` remains the Feishu-specific backend and publication
-specialist. `RepoDoctify` should not duplicate Feishu block or publishing logic.
+- Feishu publishing rules
+- Feishu update and verification strategy
+- Feishu helper scripts that make the skill portable

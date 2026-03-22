@@ -99,11 +99,12 @@ def test_feishu_command_writes_handoff_when_dependencies_present(tmp_path):
     )
 
     payload = json.loads(
-        (result.workspace / "publish" / "feishu-handoff.json").read_text(encoding="utf-8")
+        (result.workspace / "publish" / "feishu-publish-plan.json").read_text(encoding="utf-8")
     )
-    assert payload["delegate_skill"] == "feishu-knowledge-ops"
+    assert payload["publisher"] == "repodoctify"
     assert payload["required_dependency"] == "lark-mcp"
     assert payload["document_titles"]
+    assert (result.workspace / "publish" / "verification-summary.json").exists()
 
 
 def test_runtime_resolves_current_repo_by_default(tmp_path):

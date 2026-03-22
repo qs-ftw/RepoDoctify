@@ -1,7 +1,13 @@
 from .analysis import RepositoryAnalysis, analyze_repository
 from .cli import main as cli_main
 from .composer import compose_docset
-from .feishu_handoff import FeishuDependencyResult, build_feishu_handoff_payload, ensure_feishu_dependencies
+from .feishu_handoff import (
+    FeishuDependencyResult,
+    FeishuPublishMode,
+    build_feishu_publish_plan,
+    build_feishu_verification_summary,
+    ensure_feishu_dependencies,
+)
 from .html_renderer import HtmlRenderResult, render_html_docset
 from .markdown_renderer import MarkdownRenderResult, render_markdown_docset
 from .planning import build_default_docset_plan
@@ -30,6 +36,7 @@ __all__ = [
     "DocumentSpec",
     "DocsetPlan",
     "FeishuDependencyResult",
+    "FeishuPublishMode",
     "HtmlRenderResult",
     "MarkdownRenderResult",
     "RepoDoctifyRequest",
@@ -39,7 +46,8 @@ __all__ = [
     "SectionNode",
     "TargetRepoDecision",
     "analyze_repository",
-    "build_feishu_handoff_payload",
+    "build_feishu_publish_plan",
+    "build_feishu_verification_summary",
     "build_default_docset_plan",
     "cli_main",
     "compose_docset",
