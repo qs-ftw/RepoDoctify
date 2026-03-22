@@ -7,7 +7,7 @@ from pathlib import Path
 
 def main() -> None:
     repo_root = Path(__file__).resolve().parents[1]
-    target = Path.home() / ".codex" / "skills" / "RepoDoctify"
+    target = Path.home() / ".codex" / "skills" / "repo-doctify"
     if target.exists():
         shutil.rmtree(target)
     shutil.copytree(
@@ -15,9 +15,8 @@ def main() -> None:
         target,
         ignore=shutil.ignore_patterns(".git", "__pycache__", ".pytest_cache", "*.pyc"),
     )
-    print(f"Installed RepoDoctify to {target}")
+    print(f"Installed repo-doctify to {target}")
 
 
 if __name__ == "__main__":
     main()
-

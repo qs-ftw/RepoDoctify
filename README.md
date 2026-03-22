@@ -1,7 +1,7 @@
 # RepoDoctify
 
-`RepoDoctify` is a top-level repository knowledge product that turns an unfamiliar
-code repository into a structured learning docset.
+`RepoDoctify` is a Codex skill repository. Its job is to turn an unfamiliar code
+repository into a structured learning docset.
 
 The repository currently contains:
 
@@ -10,6 +10,16 @@ The repository currently contains:
 - the top-level skill contract
 - reference documents for repository methodology and rendering rules
 - a small Python helper package for shared IR, workspace isolation, repo analysis, planning, composition, and renderers
+
+## Primary Usage
+
+The primary user-facing entrypoint is the Codex skill itself:
+
+- enter Codex CLI and trigger `$repo-doctify`
+- or let Codex dispatch `repo-doctify` automatically when the task matches
+
+The Python package in this repo exists to support the skill's internal runtime,
+testing, and local verification. It is not the main user contract.
 
 ## Intended Default Behavior
 
@@ -77,7 +87,14 @@ Install the local skill copy with:
 python3 scripts/install_local_skill.py
 ```
 
-Run the CLI with:
+Use the installed skill from Codex CLI with:
+
+```bash
+$repo-doctify
+```
+
+The bundled CLI remains useful as a developer harness when testing the repo
+outside Codex:
 
 ```bash
 python -m repodoctify --repo /path/to/repo

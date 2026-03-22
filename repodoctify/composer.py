@@ -9,6 +9,8 @@ def compose_docset(analysis: RepositoryAnalysis, plan: DocsetPlan) -> list[Docum
         "homepage": _compose_homepage(analysis),
         "overview": _compose_overview(analysis),
         "code-reading-path": _compose_code_reading_path(analysis),
+        "stack-and-entrypoints": _compose_stack_and_entrypoints(analysis),
+        "bridge-topics": _compose_bridge_topics(analysis),
         "module-map": _compose_module_map(analysis),
         "evidence-guide": _compose_evidence_guide(analysis),
         "development-guide": _compose_development_guide(analysis),
@@ -19,6 +21,11 @@ def compose_docset(analysis: RepositoryAnalysis, plan: DocsetPlan) -> list[Docum
 
 
 def _compose_homepage(analysis: RepositoryAnalysis) -> DocumentSpec:
+    repo_summary = (
+        f"`{analysis.profile.repo_label}` looks like a {analysis.repo_kind} with `{analysis.primary_language}` as the main language."
+        if analysis.primary_language != "unknown"
+        else f"`{analysis.profile.repo_label}` currently looks like a mixed or generic repository."
+    )
     sections = [
         SectionNode(
             kind="paragraph",
@@ -26,16 +33,13 @@ def _compose_homepage(analysis: RepositoryAnalysis) -> DocumentSpec:
             body=[
                 f"This docset helps a first-time reader build a working mental model for `{analysis.profile.repo_label}`.",
                 "It is organized by learning obstacles instead of raw directory order.",
+                repo_summary,
             ],
         ),
         SectionNode(
             kind="numbered_list",
             title="Recommended Reading Routes",
-            body=[
-                "30-minute orientation: overview -> code-reading-path -> module-map",
-                "First-day maintenance: overview -> module-map -> development-guide",
-                "Problem localization: overview -> evidence-guide -> module-map",
-            ],
+            body=_homepage_routes(analysis),
         ),
         SectionNode(
             kind="summary",
@@ -54,12 +58,15 @@ def _compose_homepage(analysis: RepositoryAnalysis) -> DocumentSpec:
 
 
 def _compose_overview(analysis: RepositoryAnalysis) -> DocumentSpec:
+    tech_stack_lines = _tech_stack_lines(analysis)
     sections = [
         SectionNode(
             kind="paragraph",
             title="Repository Identity",
             body=[
                 f"Repository label: `{analysis.profile.repo_label}`.",
+                f"Primary language: {analysis.primary_language}.",
+                f"Repository kind: {analysis.repo_kind}.",
                 f"Primary audience: {analysis.profile.primary_audience or 'Not specified'}.",
                 (
                     f"Public locator: {analysis.profile.public_locator}."
@@ -77,6 +84,11 @@ def _compose_overview(analysis: RepositoryAnalysis) -> DocumentSpec:
             kind="numbered_list",
             title="Top-Level Files",
             body=_numbered_file_lines(analysis.top_level_files),
+        ),
+        SectionNode(
+            kind="numbered_list",
+            title="Tech Stack Signals",
+            body=tech_stack_lines,
         ),
     ]
     return DocumentSpec(
@@ -97,11 +109,12 @@ def _compose_code_reading_path(analysis: RepositoryAnalysis) -> DocumentSpec:
         )
     reading_order.extend(
         f"Read `{name}` next to understand the primary implementation surface."
-        for name in analysis.source_entries
+        for name in analysis.entrypoint_candidates
+        if name not in analysis.readme_files and name not in analysis.config_files
     )
     reading_order.extend(
         f"Use `{name}` to verify intended behavior and edge cases."
-        for name in analysis.test_entries
+        for name in analysis.test_layout[:3]
     )
     reading_order.extend(
         f"Check `{name}` to understand runtime and packaging assumptions."
@@ -135,6 +148,59 @@ def _compose_code_reading_path(analysis: RepositoryAnalysis) -> DocumentSpec:
     )
 
 
+def _compose_stack_and_entrypoints(analysis: RepositoryAnalysis) -> DocumentSpec:
+    sections = [
+        SectionNode(
+            kind="numbered_list",
+            title="Primary Entrypoints",
+            body=[
+                f"`{path}` is a likely entrypoint or early reading anchor."
+                for path in analysis.entrypoint_candidates[:6]
+            ]
+            or ["No strong entrypoint candidates were detected yet."],
+        ),
+        SectionNode(
+            kind="numbered_list",
+            title="Tooling And Runtime Signals",
+            body=_tooling_lines(analysis),
+        ),
+    ]
+    return DocumentSpec(
+        doc_id="stack-and-entrypoints",
+        title="Stack And Entrypoints",
+        role="stack",
+        question_answered="Which runtime and tooling signals define how this repository starts and builds?",
+        target_reader="A reader who wants the fastest route to the practical startup surface.",
+        sections=sections,
+    )
+
+
+def _compose_bridge_topics(analysis: RepositoryAnalysis) -> DocumentSpec:
+    sections = [
+        SectionNode(
+            kind="numbered_list",
+            title="Likely Bridge Topics",
+            body=_bridge_topic_lines(analysis),
+        ),
+        SectionNode(
+            kind="paragraph",
+            title="Why These Topics Matter",
+            body=[
+                "These topics usually cut across directories or ownership boundaries.",
+                "If the generated docset later grows deeper, these are strong candidates for standalone deep-dive docs.",
+            ],
+        ),
+    ]
+    return DocumentSpec(
+        doc_id="bridge-topics",
+        title="Bridge Topics",
+        role="bridge",
+        question_answered="Which cross-cutting concepts are likely to block first-time reading if left implicit?",
+        target_reader="A maintainer who needs to identify hidden learning obstacles early.",
+        sections=sections,
+    )
+
+
 def _compose_module_map(analysis: RepositoryAnalysis) -> DocumentSpec:
     sections = [
         SectionNode(
@@ -164,9 +230,14 @@ def _compose_module_map(analysis: RepositoryAnalysis) -> DocumentSpec:
 def _compose_evidence_guide(analysis: RepositoryAnalysis) -> DocumentSpec:
     evidence_lines: list[str] = []
     evidence_lines.extend(f"`{name}` is a documentation source." for name in analysis.readme_files)
-    evidence_lines.extend(f"`{name}` is a test evidence source." for name in analysis.test_entries)
+    evidence_lines.extend(f"`{name}` is a test evidence source." for name in analysis.test_layout[:4])
     evidence_lines.extend(f"`{name}` is a config evidence source." for name in analysis.config_files)
     evidence_lines.extend(f"`{name}` is a supplemental docs source." for name in analysis.docs_entries)
+    evidence_lines.extend(
+        f"`{key}` evidence is currently `{value}`."
+        for key, value in analysis.evidence_strength.items()
+        if value != "weak"
+    )
     if not evidence_lines:
         evidence_lines.append("Repository layout is currently the main evidence source.")
 
@@ -204,6 +275,7 @@ def _compose_development_guide(analysis: RepositoryAnalysis) -> DocumentSpec:
                 "Read the overview and code-reading-path docs before opening deep modules.",
                 "Use the module map to choose the smallest ownership surface for your change.",
                 "Use tests and configs as the final check before treating an assumption as stable.",
+                "If multiple entrypoint candidates exist, start with the most human-facing file before reading helper modules.",
             ],
         ),
         SectionNode(
@@ -252,6 +324,8 @@ def _module_lines(analysis: RepositoryAnalysis) -> list[str]:
     lines: list[str] = []
     for name in analysis.source_entries:
         lines.append(f"`{name}` looks like the primary source surface.")
+    for name in analysis.source_layout[:4]:
+        lines.append(f"`{name}` is a concrete source file worth reading early.")
     for name in analysis.test_entries:
         lines.append(f"`{name}` anchors executable behavior checks.")
     for name in analysis.docs_entries:
@@ -266,3 +340,48 @@ def _module_lines(analysis: RepositoryAnalysis) -> list[str]:
     if not lines:
         lines.append("No stable top-level module boundaries were detected yet.")
     return lines
+
+
+def _homepage_routes(analysis: RepositoryAnalysis) -> list[str]:
+    routes = [
+        "30-minute orientation: overview -> code-reading-path -> module-map",
+        "First-day maintenance: overview -> module-map -> development-guide",
+    ]
+    if analysis.evidence_strength.get("tests") == "strong":
+        routes.append("Problem localization: overview -> evidence-guide -> module-map")
+    if analysis.primary_language in {"python", "typescript", "javascript"}:
+        routes.append("Runtime familiarization: overview -> stack-and-entrypoints -> code-reading-path")
+    return routes
+
+
+def _tooling_lines(analysis: RepositoryAnalysis) -> list[str]:
+    lines = [
+        f"`{key}` suggests `{value}`."
+        for key, value in sorted(analysis.tooling_signals.items())
+    ]
+    if not lines:
+        lines.append("No strong tooling signals were detected yet.")
+    return lines
+
+
+def _tech_stack_lines(analysis: RepositoryAnalysis) -> list[str]:
+    lines = [f"The main implementation language is `{analysis.primary_language}`."]
+    lines.extend(_tooling_lines(analysis))
+    return lines
+
+
+def _bridge_topic_lines(analysis: RepositoryAnalysis) -> list[str]:
+    topics: list[str] = []
+    if analysis.tooling_signals.get("workspace_layout") == "monorepo":
+        topics.append("Workspace boundaries and package ownership will matter across `apps/` and `packages/`.")
+    if analysis.primary_language == "python":
+        topics.append("Packaging and runtime entrypoints likely flow through `pyproject.toml`, CLI modules, and `src/`.")
+    if analysis.primary_language in {"typescript", "javascript"}:
+        topics.append("Build scripts, package scripts, and source entrypoints likely split responsibilities.")
+    if analysis.evidence_strength.get("tests") == "strong":
+        topics.append("Tests are strong evidence and should be read when README and source disagree.")
+    if analysis.docs_entries:
+        topics.append("Written docs may explain architecture choices that are not obvious from entrypoint files alone.")
+    if not topics:
+        topics.append("Configuration and directory ownership are the two most likely bridge topics in this repository.")
+    return topics

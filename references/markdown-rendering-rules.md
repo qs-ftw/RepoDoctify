@@ -31,10 +31,13 @@ Use:
 - `##` for section titles
 - numbered lists for ordered reading paths
 - tables only when horizontal comparison is the point
+- real repo-relative file paths when naming code anchors or reading order
+
+Prefer numbered lists over tables for “先看哪些文件” style sections unless the
+content is genuinely comparative.
 
 ## Code and Diagram Rules
 
 - code anchors use fenced code blocks
 - Mermaid blocks remain fenced as `mermaid`
 - callouts and summaries can degrade to blockquotes
-

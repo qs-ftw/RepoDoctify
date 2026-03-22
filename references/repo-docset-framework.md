@@ -38,6 +38,10 @@ The layers are responsibilities, not mandatory file counts.
 
 Collapse layers when the repository is small or repetitive.
 
+When RepoDoctify is operating in “multi-repo first usable” mode, it should not
+emit the exact same document list for every repo. The framework remains stable,
+but the concrete doc count should adapt to repository complexity.
+
 ## Bridge-Doc Selection
 
 Write bridge docs for concepts that are:
@@ -72,4 +76,3 @@ Every repository docset should support:
 - first-day maintenance onboarding
 - module deep-dive route
 - feature-development route
-

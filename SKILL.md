@@ -1,5 +1,5 @@
 ---
-name: RepoDoctify
+name: repo-doctify
 description: Use when the user wants to turn a source repository into a structured learning docset with Markdown, HTML, or Feishu outputs, or wants to plan the repository documentation framework first.
 ---
 
@@ -12,6 +12,11 @@ description: Use when the user wants to turn a source repository into a structur
 It turns a repository into a structured learning docset for first-time readers,
 maintainers, and feature developers, while keeping generated artifacts outside
 the analyzed repository by default.
+
+In Codex, the primary way to use this product is as a skill:
+
+- manually trigger it with `$repo-doctify`
+- or let Codex dispatch it automatically when the task matches
 
 ## Default Behavior
 
@@ -41,10 +46,9 @@ This default output should include:
 
 All output modes should share the same intermediate result.
 
-For local execution, the Python package should expose a stable command surface
-through `python -m repodoctify` and a `repodoctify` CLI entrypoint. ASCII
-aliases such as `plan`, `md`, `html`, and `feishu` are acceptable for the
-command layer as long as they preserve the same user-facing semantics.
+The bundled Python package and CLI are implementation helpers for the skill
+repository itself. They are useful for local verification and internal tooling,
+but they are not the primary user-facing invocation path.
 
 ## Output Isolation Rule
 
