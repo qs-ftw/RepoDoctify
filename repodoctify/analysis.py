@@ -13,6 +13,9 @@ CONFIG_FILE_NAMES = (
     "tsconfig.json",
     "Cargo.toml",
     "go.mod",
+    "pom.xml",
+    "build.gradle",
+    "build.gradle.kts",
     "Makefile",
     "setup.py",
     "requirements.txt",
@@ -156,10 +159,7 @@ def _detect_source_entries(
             candidates.append(name)
             continue
         path = repo / name
-        if path.is_dir() and any(
-            child.startswith(f"{name}/") and child.endswith((".py", ".ts", ".tsx", ".js", ".jsx"))
-            for child in file_inventory
-        ):
+        if path.is_dir() and any(child.startswith(f"{name}/") and child.endswith(_SOURCE_FILE_SUFFIXES) for child in file_inventory):
             candidates.append(name)
     return sorted(set(candidates))
 
@@ -175,10 +175,16 @@ def _detect_test_entries(
         if lower in {"tests", "test"} or lower.endswith("_tests"):
             candidates.append(name)
             continue
+        if name == "src" and any(child.startswith("src/test/") for child in file_inventory):
+            candidates.append("src/test")
+            continue
         path = repo / name
         if path.is_dir() and any(
             child.startswith(f"{name}/")
-            and Path(child).name.startswith(("test", "spec"))
+            and (
+                Path(child).name.startswith(("test", "spec"))
+                or child.endswith(("Test.java", "_test.go"))
+            )
             for child in file_inventory
         ):
             candidates.append(name)
@@ -190,6 +196,9 @@ def _detect_primary_language(top_level_files: list[str], file_inventory: list[st
     python_count = suffixes.count(".py")
     typescript_count = suffixes.count(".ts") + suffixes.count(".tsx")
     javascript_count = suffixes.count(".js") + suffixes.count(".jsx")
+    go_count = suffixes.count(".go")
+    rust_count = suffixes.count(".rs")
+    java_count = suffixes.count(".java")
 
     if "pyproject.toml" in top_level_files or "setup.py" in top_level_files or python_count:
         if python_count >= typescript_count + javascript_count:
@@ -198,6 +207,12 @@ def _detect_primary_language(top_level_files: list[str], file_inventory: list[st
         return "typescript"
     if "package.json" in top_level_files or javascript_count:
         return "javascript"
+    if "go.mod" in top_level_files or go_count:
+        return "go"
+    if "Cargo.toml" in top_level_files or rust_count:
+        return "rust"
+    if "pom.xml" in top_level_files or "build.gradle" in top_level_files or "build.gradle.kts" in top_level_files or java_count:
+        return "java"
     return "unknown"
 
 
@@ -214,6 +229,12 @@ def _detect_repo_kind(primary_language: str, top_level_files: list[str], file_in
         if "package.json" in top_level_files:
             return "node_javascript"
         return "javascript_repo"
+    if primary_language == "go":
+        return "go_module" if "go.mod" in top_level_files else "go_repo"
+    if primary_language == "rust":
+        return "rust_crate" if "Cargo.toml" in top_level_files else "rust_repo"
+    if primary_language == "java":
+        return "java_repo"
     if any(path.endswith(".md") for path in file_inventory):
         return "docs_heavy_repo"
     return "generic_repo"
@@ -223,7 +244,7 @@ def _detect_source_layout(file_inventory: list[str], source_entries: list[str]) 
     layout: list[str] = []
     for name in source_entries:
         for path in file_inventory:
-            if path.startswith(f"{name}/") and path.endswith((".py", ".ts", ".tsx", ".js", ".jsx")):
+            if path.startswith(f"{name}/") and path.endswith(_SOURCE_FILE_SUFFIXES):
                 layout.append(path)
     return layout[:12]
 
@@ -258,6 +279,14 @@ def _detect_tooling_signals(
         signals["build_system"] = "pyproject"
     elif "setup.py" in top_level_files:
         signals["build_system"] = "setup.py"
+    if "go.mod" in top_level_files:
+        signals["build_system"] = "go.mod"
+    if "Cargo.toml" in top_level_files:
+        signals["build_system"] = "cargo"
+    if "pom.xml" in top_level_files:
+        signals["build_system"] = "maven"
+    if "build.gradle" in top_level_files or "build.gradle.kts" in top_level_files:
+        signals["build_system"] = "gradle"
     if "tsconfig.json" in top_level_files:
         signals["typescript_config"] = "present"
     if primary_language != "unknown":
@@ -285,15 +314,28 @@ def _detect_entrypoint_candidates(
         "python": ("main.py", "cli.py", "__main__.py", "app.py"),
         "typescript": ("index.ts", "main.ts", "app.ts", "cli.ts"),
         "javascript": ("index.js", "main.js", "app.js", "cli.js"),
-    }.get(primary_language, ("main.py", "index.ts", "index.js", "app.py"))
+        "go": ("cmd/server/main.go", "cmd/main.go", "main.go"),
+        "rust": ("src/main.rs", "src/lib.rs"),
+        "java": ("src/main/java/App.java", "src/main/java/Main.java"),
+    }.get(primary_language, ("main.py", "index.ts", "index.js", "app.py", "main.go", "src/main.rs"))
 
     for name in preferred_names:
         for path in file_inventory:
             if path.endswith(name):
                 candidates.append(path)
     for path in file_inventory:
-        if path.startswith(("src/", "apps/", "packages/")) and path.endswith((".py", ".ts", ".tsx", ".js", ".jsx")):
+        if path.startswith(("src/", "apps/", "packages/", "cmd/", "internal/")) and path.endswith(_SOURCE_FILE_SUFFIXES):
             candidates.append(path)
+    if "go.mod" in top_level_files:
+        candidates.append("go.mod")
+    if "Cargo.toml" in top_level_files:
+        candidates.append("Cargo.toml")
+    if "pom.xml" in top_level_files:
+        candidates.append("pom.xml")
+    if "build.gradle" in top_level_files:
+        candidates.append("build.gradle")
+    if "build.gradle.kts" in top_level_files:
+        candidates.append("build.gradle.kts")
 
     ordered: list[str] = []
     seen: set[str] = set()
@@ -423,12 +465,15 @@ def _choose_entry_anchor(entrypoint_candidates: list[str], primary_language: str
         "python": ("cli.py", "__main__.py", "main.py", "app.py"),
         "typescript": ("main.ts", "index.ts", "app.ts", "cli.ts"),
         "javascript": ("main.js", "index.js", "app.js", "cli.js"),
-    }.get(primary_language, ("main.py", "main.ts", "main.js"))
+        "go": ("cmd/server/main.go", "cmd/main.go", "main.go"),
+        "rust": ("src/main.rs", "src/lib.rs"),
+        "java": ("src/main/java/App.java", "src/main/java/Main.java"),
+    }.get(primary_language, ("main.py", "main.ts", "main.js", "main.go", "src/main.rs"))
     for suffix in preferred_suffixes:
         for candidate in entrypoint_candidates:
             if candidate.endswith(suffix):
                 return candidate
-    return _first_matching(entrypoint_candidates, prefixes=("src/", "apps/", "packages/"))
+    return _first_matching(entrypoint_candidates, prefixes=("src/", "apps/", "packages/", "cmd/", "internal/"))
 
 
 def _choose_implementation_anchor(
@@ -442,7 +487,10 @@ def _choose_implementation_anchor(
         "python": ("service.py", "core.py", "runner.py", "pipeline.py"),
         "typescript": ("service.ts", "core.ts", "runner.ts", "index.ts"),
         "javascript": ("service.js", "core.js", "runner.js", "index.js"),
-    }.get(primary_language, ("service.py", "service.ts", "service.js"))
+        "go": ("service.go", "app.go", "server.go"),
+        "rust": ("lib.rs", "mod.rs"),
+        "java": ("Service.java", "App.java"),
+    }.get(primary_language, ("service.py", "service.ts", "service.js", "service.go"))
     if entry_anchor is not None:
         entry_parent = str(Path(entry_anchor).parent)
         for name in preferred_names:
@@ -473,11 +521,17 @@ def _choose_config_anchor(config_files: list[str], primary_language: str) -> str
         "python": ("pyproject.toml", "setup.py", "requirements.txt"),
         "typescript": ("package.json", "tsconfig.json"),
         "javascript": ("package.json",),
+        "go": ("go.mod", "Makefile"),
+        "rust": ("Cargo.toml",),
+        "java": ("pom.xml", "build.gradle", "build.gradle.kts"),
     }.get(primary_language, tuple(config_files))
     for candidate in preferred:
         if candidate in config_files:
             return candidate
     return config_files[0] if config_files else None
+
+
+_SOURCE_FILE_SUFFIXES = (".py", ".ts", ".tsx", ".js", ".jsx", ".go", ".rs", ".java")
 
 
 def _first_matching(

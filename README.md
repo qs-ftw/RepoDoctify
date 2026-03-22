@@ -26,13 +26,14 @@ testing, and local verification. It is not the main user contract.
 The current release target is:
 
 - Python + TS/JS repositories first
+- Go, Rust, and Java repositories with structured but more conservative support
 - Markdown as the default primary deliverable
 - low-interruption skill behavior
 
 This repo is not a good fit yet for:
 
 - Feishu-first publishing workflows
-- languages outside Python and TS/JS when repo structure is unusual
+- languages outside Python, TS/JS, Go, Rust, and Java when repo structure is unusual
 - deep semantic analysis such as full call graphs or AST-level reasoning
 
 ## Intended Default Behavior
@@ -121,9 +122,17 @@ This repository includes lightweight example repos under `examples/`:
 
 - `examples/python-basic`
 - `examples/typescript-basic`
+- `examples/go-basic`
+- `examples/rust-basic`
 
 Use them to smoke-test installation and output quality without guessing which
 repo shape the current release is designed to support first.
+
+Current support quality is:
+
+- strong support: Python, TypeScript, JavaScript
+- structured support: Go, Rust, Java
+- fallback support: generic repositories with conservative reading guidance
 
 The bundled CLI remains useful as an internal developer harness when testing the repo
 outside Codex:

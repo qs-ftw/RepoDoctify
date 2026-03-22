@@ -1,3 +1,4 @@
+from .adapters import FeishuProbeAdapter
 from .auth import FeishuAuthState, probe_feishu_auth_state
 from .docx import (
     create_document_child_block,
@@ -29,6 +30,7 @@ from .plans import (
 __all__ = [
     "FeishuAuthState",
     "FeishuExecutionMode",
+    "FeishuProbeAdapter",
     "FeishuPublishMode",
     "FeishuPublishTarget",
     "FeishuVerificationCheck",

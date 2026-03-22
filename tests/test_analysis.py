@@ -116,3 +116,67 @@ def test_analyze_repository_distinguishes_workspace_app_and_shared_anchors(tmp_p
 
     assert any(chain.chain_kind == "workspace_app" for chain in analysis.code_anchor_details)
     assert any(chain.chain_kind == "workspace_shared" for chain in analysis.code_anchor_details)
+
+
+def test_analyze_go_repo_detects_module_and_entrypoints(tmp_path):
+    repo = tmp_path / "go-demo"
+    repo.mkdir()
+    (repo / "README.md").write_text("# Go Demo\n", encoding="utf-8")
+    (repo / "go.mod").write_text("module example.com/go-demo\n\ngo 1.22\n", encoding="utf-8")
+    (repo / "cmd").mkdir()
+    (repo / "cmd" / "server").mkdir(parents=True)
+    (repo / "cmd" / "server" / "main.go").write_text("package main\nfunc main(){}\n", encoding="utf-8")
+    (repo / "internal").mkdir()
+    (repo / "internal" / "app.go").write_text("package internal\n", encoding="utf-8")
+    (repo / "tests").mkdir()
+    (repo / "tests" / "server_test.go").write_text("package tests\n", encoding="utf-8")
+
+    analysis = analyze_repository(repo)
+
+    assert analysis.primary_language == "go"
+    assert analysis.repo_kind == "go_module"
+    assert "go.mod" in analysis.config_files
+    assert any(candidate.endswith("cmd/server/main.go") for candidate in analysis.entrypoint_candidates)
+    assert any(chain.entry_anchor.endswith("cmd/server/main.go") for chain in analysis.code_anchor_details)
+
+
+def test_analyze_rust_repo_detects_crate_signals(tmp_path):
+    repo = tmp_path / "rust-demo"
+    repo.mkdir()
+    (repo / "README.md").write_text("# Rust Demo\n", encoding="utf-8")
+    (repo / "Cargo.toml").write_text("[package]\nname = \"rust-demo\"\nversion = \"0.1.0\"\n", encoding="utf-8")
+    (repo / "src").mkdir()
+    (repo / "src" / "main.rs").write_text("fn main() {}\n", encoding="utf-8")
+    (repo / "src" / "lib.rs").write_text("pub fn run() {}\n", encoding="utf-8")
+    (repo / "tests").mkdir()
+    (repo / "tests" / "smoke_test.rs").write_text("#[test]\nfn smoke() {}\n", encoding="utf-8")
+
+    analysis = analyze_repository(repo)
+
+    assert analysis.primary_language == "rust"
+    assert analysis.repo_kind == "rust_crate"
+    assert "Cargo.toml" in analysis.config_files
+    assert any(candidate.endswith("src/main.rs") for candidate in analysis.entrypoint_candidates)
+    assert any(chain.config_anchor == "Cargo.toml" for chain in analysis.code_anchor_details)
+
+
+def test_analyze_java_repo_detects_gradle_layout(tmp_path):
+    repo = tmp_path / "java-demo"
+    repo.mkdir()
+    (repo / "README.md").write_text("# Java Demo\n", encoding="utf-8")
+    (repo / "build.gradle").write_text("plugins { id 'java' }\n", encoding="utf-8")
+    (repo / "src").mkdir()
+    (repo / "src" / "main").mkdir()
+    (repo / "src" / "main" / "java").mkdir(parents=True)
+    (repo / "src" / "main" / "java" / "App.java").write_text("class App { public static void main(String[] args) {} }\n", encoding="utf-8")
+    (repo / "src" / "test").mkdir()
+    (repo / "src" / "test" / "java").mkdir(parents=True)
+    (repo / "src" / "test" / "java" / "AppTest.java").write_text("class AppTest {}\n", encoding="utf-8")
+
+    analysis = analyze_repository(repo)
+
+    assert analysis.primary_language == "java"
+    assert analysis.repo_kind == "java_repo"
+    assert "build.gradle" in analysis.config_files
+    assert any(candidate.endswith("src/main/java/App.java") for candidate in analysis.entrypoint_candidates)
+    assert any(chain.config_anchor == "build.gradle" for chain in analysis.code_anchor_details)

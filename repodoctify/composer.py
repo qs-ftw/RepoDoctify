@@ -300,6 +300,7 @@ def _compose_development_guide(analysis: RepositoryAnalysis) -> DocumentSpec:
             kind="paragraph",
             title="Change Risk Signals",
             body=[
+                *_language_specific_change_risk_lines(analysis),
                 (
                     f"Changes touching `{', '.join(analysis.source_entries)}` and `{', '.join(analysis.test_entries)}` together "
                     "are likely cross-boundary edits."
@@ -369,7 +370,7 @@ def _homepage_routes(analysis: RepositoryAnalysis) -> list[str]:
     ]
     if analysis.evidence_strength.get("tests") == "strong":
         routes.append("Problem localization: overview -> evidence-guide -> module-map")
-    if analysis.primary_language in {"python", "typescript", "javascript"}:
+    if analysis.primary_language in {"python", "typescript", "javascript", "go", "rust", "java"}:
         routes.append("Runtime familiarization: overview -> stack-and-entrypoints -> code-reading-path")
     return routes
 
@@ -398,6 +399,12 @@ def _bridge_topic_lines(analysis: RepositoryAnalysis) -> list[str]:
         topics.append("Packaging and runtime entrypoints likely flow through `pyproject.toml`, CLI modules, and `src/`.")
     if analysis.primary_language in {"typescript", "javascript"}:
         topics.append("Build scripts, package scripts, and source entrypoints likely split responsibilities.")
+    if analysis.primary_language == "go":
+        topics.append("Go module boundaries likely flow through `go.mod`, `cmd/` entrypoints, and `internal/` ownership surfaces.")
+    if analysis.primary_language == "rust":
+        topics.append("Rust crate behavior likely splits between `Cargo.toml`, `src/main.rs`, `src/lib.rs`, and integration tests.")
+    if analysis.primary_language == "java":
+        topics.append("Java build and ownership boundaries likely split across Gradle or Maven config, `src/main/java`, and `src/test/java`.")
     if analysis.evidence_strength.get("tests") == "strong":
         topics.append("Tests are strong evidence and should be read when README and source disagree.")
     if analysis.docs_entries:
@@ -441,6 +448,12 @@ def _development_line_for_chain(chain: CodeAnchorChain) -> str:
 def _bridge_anchor_summary(analysis: RepositoryAnalysis) -> str:
     if any(chain.chain_kind == "workspace_shared" for chain in analysis.code_anchor_details):
         return "In workspace repos, the app entrypoint and shared package path should be treated as separate ownership surfaces."
+    if analysis.primary_language == "go":
+        return "In Go repos, `cmd/` entrypoints and `internal/` packages often define the first real ownership boundary."
+    if analysis.primary_language == "rust":
+        return "In Rust repos, the first useful bridge is usually between crate entrypoints, library modules, and regression tests."
+    if analysis.primary_language == "java":
+        return "In Java repos, source sets and build config usually matter more than single-file entrypoints."
     return "The strongest bridge topics usually sit between the main entrypoint, its implementation handoff, and the nearest test."
 
 
@@ -448,3 +461,19 @@ def _evidence_anchor_summary(analysis: RepositoryAnalysis) -> str:
     if analysis.code_anchor_details:
         return "When code anchors exist, treat the linked test anchor or regression anchor as the highest-priority evidence surface."
     return "When no code anchors are available, use tests and config files as the best available evidence surfaces."
+
+
+def _language_specific_change_risk_lines(analysis: RepositoryAnalysis) -> list[str]:
+    if analysis.primary_language == "go":
+        return [
+            "In Go repos, prefer changes that stay inside one `cmd/` entrypoint or one `internal/` package before widening the boundary."
+        ]
+    if analysis.primary_language == "rust":
+        return [
+            "In Rust repos, decide early whether the change belongs at the crate entrypoint, inside `src/lib.rs`, or in a narrower module."
+        ]
+    if analysis.primary_language == "java":
+        return [
+            "In Java repos, start by choosing the smallest source set boundary, usually `src/main/java` for behavior and `src/test/java` for regression proof."
+        ]
+    return []

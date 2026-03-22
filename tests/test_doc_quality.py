@@ -113,3 +113,79 @@ def test_development_guide_includes_debug_and_change_boundary_guidance(tmp_path)
     assert "debug" in dev_text.lower()
     assert "change boundary" in dev_text.lower()
     assert "test anchor" in evidence_text.lower() or "regression anchor" in evidence_text.lower()
+
+
+def test_go_docs_include_module_and_runtime_guidance(tmp_path):
+    repo = tmp_path / "go-docs"
+    repo.mkdir()
+    (repo / "README.md").write_text("# Go Docs\n", encoding="utf-8")
+    (repo / "go.mod").write_text("module example.com/go-docs\n\ngo 1.22\n", encoding="utf-8")
+    (repo / "cmd").mkdir()
+    (repo / "cmd" / "server").mkdir(parents=True)
+    (repo / "cmd" / "server" / "main.go").write_text("package main\nfunc main(){}\n", encoding="utf-8")
+    (repo / "internal").mkdir()
+    (repo / "internal" / "service.go").write_text("package internal\n", encoding="utf-8")
+    (repo / "tests").mkdir()
+    (repo / "tests" / "server_test.go").write_text("package tests\n", encoding="utf-8")
+
+    analysis = analyze_repository(repo)
+    docs = compose_docset(analysis, build_default_docset_plan(analysis))
+    stack = next(doc for doc in docs if doc.doc_id == "stack-and-entrypoints")
+    bridge = next(doc for doc in docs if doc.doc_id == "bridge-topics")
+
+    stack_text = "\n".join(item for section in stack.sections for item in section.body)
+    bridge_text = "\n".join(item for section in bridge.sections for item in section.body)
+
+    assert "cmd/server/main.go" in stack_text
+    assert "go.mod" in stack_text.lower()
+    assert "internal/" in bridge_text.lower() or "go module" in bridge_text.lower()
+
+
+def test_rust_docs_include_crate_and_test_guidance(tmp_path):
+    repo = tmp_path / "rust-docs"
+    repo.mkdir()
+    (repo / "README.md").write_text("# Rust Docs\n", encoding="utf-8")
+    (repo / "Cargo.toml").write_text("[package]\nname = \"rust-docs\"\nversion = \"0.1.0\"\n", encoding="utf-8")
+    (repo / "src").mkdir()
+    (repo / "src" / "main.rs").write_text("fn main() {}\n", encoding="utf-8")
+    (repo / "src" / "lib.rs").write_text("pub fn run() {}\n", encoding="utf-8")
+    (repo / "tests").mkdir()
+    (repo / "tests" / "smoke_test.rs").write_text("#[test]\nfn smoke() {}\n", encoding="utf-8")
+
+    analysis = analyze_repository(repo)
+    docs = compose_docset(analysis, build_default_docset_plan(analysis))
+    code_path = next(doc for doc in docs if doc.doc_id == "code-reading-path")
+    dev_guide = next(doc for doc in docs if doc.doc_id == "development-guide")
+
+    code_text = "\n".join(item for section in code_path.sections for item in section.body)
+    dev_text = "\n".join(item for section in dev_guide.sections for item in section.body)
+
+    assert "Cargo.toml" in code_text
+    assert "src/main.rs" in code_text or "src/lib.rs" in code_text
+    assert "crate" in dev_text.lower() or "module" in dev_text.lower()
+
+
+def test_java_docs_include_build_and_source_set_guidance(tmp_path):
+    repo = tmp_path / "java-docs"
+    repo.mkdir()
+    (repo / "README.md").write_text("# Java Docs\n", encoding="utf-8")
+    (repo / "build.gradle").write_text("plugins { id 'java' }\n", encoding="utf-8")
+    (repo / "src").mkdir()
+    (repo / "src" / "main").mkdir()
+    (repo / "src" / "main" / "java").mkdir(parents=True)
+    (repo / "src" / "main" / "java" / "App.java").write_text("class App { public static void main(String[] args) {} }\n", encoding="utf-8")
+    (repo / "src" / "test").mkdir()
+    (repo / "src" / "test" / "java").mkdir(parents=True)
+    (repo / "src" / "test" / "java" / "AppTest.java").write_text("class AppTest {}\n", encoding="utf-8")
+
+    analysis = analyze_repository(repo)
+    docs = compose_docset(analysis, build_default_docset_plan(analysis))
+    overview = next(doc for doc in docs if doc.doc_id == "overview")
+    dev_guide = next(doc for doc in docs if doc.doc_id == "development-guide")
+
+    overview_text = "\n".join(item for section in overview.sections for item in section.body)
+    dev_text = "\n".join(item for section in dev_guide.sections for item in section.body)
+
+    assert "java" in overview_text.lower()
+    assert "build.gradle" in overview_text
+    assert "src/main/java" in dev_text or "src/test/java" in dev_text

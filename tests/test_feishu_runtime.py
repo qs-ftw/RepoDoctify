@@ -176,3 +176,30 @@ def test_feishu_verification_summary_includes_structured_checks():
     assert summary["execution_mode"] == FeishuExecutionMode.DRY_RUN.value
     assert summary["checks"][0]["check_kind"] == "title"
     assert summary["status"] == "planned"
+
+
+def test_feishu_publish_plan_applies_probe_results_to_execute_targets():
+    plan = build_feishu_publish_plan(
+        RepositoryProfile(repo_label="demo", source_path="/tmp/demo"),
+        [DocumentSpec(doc_id="overview", title="Overview", role="overview")],
+        manifest_path="/tmp/out/manifest.json",
+        execution_mode=FeishuExecutionMode.EXECUTE,
+        requested_target_doc_ids={"overview": "doc_overview_456"},
+        probe_results={
+            "documents": [
+                {
+                    "doc_id": "overview",
+                    "target_document_id": "doc_overview_456",
+                    "status": "ok",
+                    "title": "Overview Remote",
+                }
+            ]
+        },
+    )
+
+    target = plan["documents"][0]
+
+    assert target["target_resolution"] == "verified_remote"
+    assert target["execute_ready"] is True
+    assert target["verified_target_title"] == "Overview Remote"
+    assert plan["execute_ready"] is True

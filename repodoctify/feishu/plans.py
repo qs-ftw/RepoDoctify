@@ -33,6 +33,7 @@ class FeishuPublishTarget:
     target_lookup_key: str | None = None
     target_resolution: str = "create_new"
     execute_ready: bool = True
+    verified_target_title: str | None = None
     requires_user_auth: bool = False
 
 
@@ -73,9 +74,11 @@ def build_feishu_publish_plan(
     manifest_path: str | Path,
     execution_mode: FeishuExecutionMode = FeishuExecutionMode.PLAN_ONLY,
     requested_target_doc_ids: dict[str, str] | None = None,
+    probe_results: dict | None = None,
 ) -> dict:
     requested_target_doc_ids = requested_target_doc_ids or {}
     targets = [_target_for_document(doc, requested_target_doc_ids, execution_mode) for doc in docs]
+    targets = _apply_probe_results(targets, probe_results)
     ordered_targets = _order_targets(targets)
     verification = _build_verification_plan(ordered_targets)
     execute_ready = all(target.execute_ready for target in ordered_targets)
@@ -108,6 +111,7 @@ def build_feishu_publish_plan(
                 "target_lookup_key": target.target_lookup_key,
                 "target_resolution": target.target_resolution,
                 "execute_ready": target.execute_ready,
+                "verified_target_title": target.verified_target_title,
                 "requires_user_auth": target.requires_user_auth,
             }
             for target in ordered_targets
@@ -143,10 +147,39 @@ def _resolve_target_state(
     if publish_mode == FeishuPublishMode.CREATE_NEW:
         return "create_new", True
     if requested_target_document_id:
-        return "request_pinned", True
+        return "request_pinned", execution_mode != FeishuExecutionMode.EXECUTE
     if execution_mode == FeishuExecutionMode.EXECUTE:
         return "lookup_required", False
     return "lookup_planned", False
+
+
+def _apply_probe_results(
+    targets: list[FeishuPublishTarget],
+    probe_results: dict | None,
+) -> list[FeishuPublishTarget]:
+    if not probe_results:
+        return targets
+
+    probe_lookup: dict[tuple[str, str | None], dict] = {}
+    for item in probe_results.get("documents", []):
+        probe_lookup[(item.get("doc_id"), item.get("target_document_id"))] = item
+
+    updated: list[FeishuPublishTarget] = []
+    for target in targets:
+        probe = probe_lookup.get((target.doc_id, target.target_document_id))
+        if not probe:
+            updated.append(target)
+            continue
+        status = probe.get("status")
+        if status == "ok":
+            target.target_resolution = "verified_remote"
+            target.execute_ready = True
+            target.verified_target_title = probe.get("title")
+        elif status in {"missing", "inaccessible", "lookup_required", "lookup_not_attempted"}:
+            target.execute_ready = False
+            target.target_resolution = status
+        updated.append(target)
+    return updated
 
 
 def _target_for_document(

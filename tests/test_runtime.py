@@ -242,3 +242,52 @@ def test_run_repodoctify_request_blocks_execute_when_targets_are_unresolved(tmp_
     assert result.feishu_auth_state["ready_for_execute"] is False
     assert result.feishu_publish_plan["execute_ready"] is False
     assert "unresolved_target_documents" in result.feishu_publish_plan["execute_blockers"]
+
+
+def test_run_repodoctify_request_uses_probe_adapter_for_execute_targets(tmp_path):
+    class FakeProbeAdapter:
+        def probe_targets(self, plan):
+            documents = []
+            for document in plan["documents"]:
+                if document["target_document_id"] == "doc_overview_456":
+                    documents.append(
+                        {
+                            "doc_id": document["doc_id"],
+                            "target_document_id": document["target_document_id"],
+                            "status": "ok",
+                            "title": "Overview Remote",
+                        }
+                    )
+                else:
+                    documents.append(
+                        {
+                            "doc_id": document["doc_id"],
+                            "target_document_id": document["target_document_id"],
+                            "status": "not_needed",
+                        }
+                    )
+            return {"documents": documents}
+
+    repo = _make_repo(tmp_path)
+
+    request = RepoDoctifyRequest(
+        requested_repo=repo,
+        current_dir=tmp_path,
+        command=COMMAND_FEISHU,
+        installed_tools={"lark-mcp"},
+        run_id="feishu-execute-probed",
+        feishu_mode=FeishuExecutionMode.EXECUTE.value,
+        feishu_target_doc_ids={"overview": "doc_overview_456"},
+        feishu_probe_adapter=FakeProbeAdapter(),
+    )
+
+    result = run_repodoctify_request(request)
+
+    overview_target = next(
+        document for document in result.feishu_publish_plan["documents"] if document["doc_id"] == "overview"
+    )
+
+    assert result.feishu_probe_summary is not None
+    assert result.feishu_probe_summary["documents"][0]["status"] == "ok"
+    assert overview_target["execute_ready"] is True
+    assert overview_target["verified_target_title"] == "Overview Remote"

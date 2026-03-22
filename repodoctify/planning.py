@@ -65,8 +65,10 @@ def _select_document_ids(analysis: RepositoryAnalysis) -> set[str]:
     selected = {"homepage", "overview", "code-reading-path", "module-map", "development-guide"}
     if analysis.test_entries or analysis.config_files or analysis.docs_entries:
         selected.add("evidence-guide")
-    if analysis.primary_language in {"python", "typescript", "javascript"}:
+    if analysis.primary_language in {"python", "typescript", "javascript", "go", "rust", "java"}:
         selected.add("stack-and-entrypoints")
+    if analysis.primary_language in {"go", "rust", "java"}:
+        selected.add("bridge-topics")
     if complexity_score >= 8:
         selected.add("bridge-topics")
     return selected

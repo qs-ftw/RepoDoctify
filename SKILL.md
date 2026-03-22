@@ -13,6 +13,10 @@ It turns a repository into a structured learning docset for first-time readers,
 maintainers, and feature developers, while keeping generated artifacts outside
 the analyzed repository by default.
 
+Current strong support is Python and TS/JS. Current structured support is Go,
+Rust, and Java. Other repository types should be handled conservatively rather
+than treated as deeply understood.
+
 In Codex, the primary way to use this product is as a skill:
 
 - manually trigger it with `$repo-doctify`

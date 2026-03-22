@@ -6,6 +6,7 @@ import shutil
 
 from .models import DocumentSpec, RepositoryProfile
 from .feishu.auth import FeishuAuthState, probe_feishu_auth_state
+from .feishu.adapters import FeishuProbeAdapter
 from .feishu.plans import (
     FeishuExecutionMode,
     FeishuPublishMode,

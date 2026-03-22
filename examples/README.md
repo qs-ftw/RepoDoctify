@@ -12,12 +12,20 @@ Included examples:
 - `typescript-basic`
   - small TypeScript package layout
   - includes `README.md`, `package.json`, `tsconfig.json`, and `src/`
+- `go-basic`
+  - small Go module layout
+  - includes `README.md`, `go.mod`, `cmd/`, `internal/`, and `tests/`
+- `rust-basic`
+  - small Rust crate layout
+  - includes `README.md`, `Cargo.toml`, `src/`, and `tests/`
 
 Recommended smoke checks:
 
 ```bash
 python -m repodoctify --repo examples/python-basic --workspace-root /tmp/repodoctify-workspaces
 python -m repodoctify --repo examples/typescript-basic --workspace-root /tmp/repodoctify-workspaces
+python -m repodoctify --repo examples/go-basic --workspace-root /tmp/repodoctify-workspaces
+python -m repodoctify --repo examples/rust-basic --workspace-root /tmp/repodoctify-workspaces
 ```
 
 For Codex skill testing after installation:

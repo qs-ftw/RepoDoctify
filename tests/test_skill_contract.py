@@ -69,6 +69,7 @@ def test_readme_describes_skill_first_usage():
     assert "$repo-doctify" in text
     assert "Codex skill" in text
     assert "Python + TS/JS" in text
+    assert "Go, Rust, and Java" in text
     assert "not a good fit yet" in text or "not supported yet" in text
     assert "examples/" in text
     assert "feishu-knowledge-ops" not in text
