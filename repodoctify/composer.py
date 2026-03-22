@@ -131,6 +131,12 @@ def _compose_code_reading_path(analysis: RepositoryAnalysis) -> DocumentSpec:
             body=reading_order,
         ),
         SectionNode(
+            kind="numbered_list",
+            title="Follow These Chains",
+            body=analysis.code_anchor_chains
+            or ["Follow the strongest entrypoint, then its nearest test, because no higher-confidence call chain was detected."],
+        ),
+        SectionNode(
             kind="paragraph",
             title="How To Read The Main Chain",
             body=[
@@ -281,6 +287,15 @@ def _compose_development_guide(analysis: RepositoryAnalysis) -> DocumentSpec:
                 "If multiple entrypoint candidates exist, start with the most human-facing entrypoint before reading helper modules.",
                 "Before editing code, decide which entrypoint, ownership surface, and tests should move together with the change.",
             ],
+        ),
+        SectionNode(
+            kind="numbered_list",
+            title="Change Chains To Follow",
+            body=[
+                chain.replace("Follow", "Use")
+                for chain in analysis.code_anchor_chains[:3]
+            ]
+            or ["Use the main entrypoint, its nearest implementation file, and the closest test as the first change boundary."],
         ),
         SectionNode(
             kind="paragraph",

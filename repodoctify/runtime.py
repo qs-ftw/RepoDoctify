@@ -12,6 +12,7 @@ from .manifest import build_docset_manifest
 from .markdown_renderer import render_markdown_docset
 from .models import DocumentSpec, DocsetPlan, RepositoryProfile, SectionNode
 from .planning import build_default_docset_plan
+from .targeting import TargetRepoDecision, resolve_target_repo
 from .workspace import ensure_external_workspace, find_latest_workspace, write_workspace_metadata
 
 
@@ -33,6 +34,18 @@ class RepoDoctifyRunResult:
     handoff_payload: dict | None = None
 
 
+def resolve_repo_decision(
+    current_dir: str | Path,
+    requested_repo: str | Path | None = None,
+    strict_conflict_check: bool = False,
+) -> TargetRepoDecision:
+    return resolve_target_repo(
+        current_dir=current_dir,
+        requested_repo=requested_repo,
+        strict_conflict_check=strict_conflict_check,
+    )
+
+
 def run_repodoctify(
     repo_path: str | Path,
     command: str | None = None,
@@ -41,12 +54,22 @@ def run_repodoctify(
     installed_tools: set[str] | None = None,
     run_id: str | None = None,
     reuse_latest: bool = False,
+    current_dir: str | Path | None = None,
+    strict_conflict_check: bool = False,
 ) -> RepoDoctifyRunResult:
     resolved_command = command or COMMAND_RENDER_MD
     if resolved_command not in SUPPORTED_COMMANDS:
         raise ValueError(f"Unsupported RepoDoctify command: {resolved_command}")
 
-    repo = Path(repo_path).resolve()
+    decision = resolve_repo_decision(
+        current_dir=current_dir or Path.cwd(),
+        requested_repo=repo_path,
+        strict_conflict_check=strict_conflict_check,
+    )
+    if decision.should_ask:
+        raise ValueError(decision.question)
+
+    repo = decision.repo_path
     workspace = _resolve_workspace(
         repo,
         workspace_root=workspace_root,

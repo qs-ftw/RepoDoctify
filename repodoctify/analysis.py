@@ -39,6 +39,7 @@ class RepositoryAnalysis:
     config_files: list[str] = field(default_factory=list)
     tooling_signals: dict[str, str] = field(default_factory=dict)
     evidence_strength: dict[str, str] = field(default_factory=dict)
+    code_anchor_chains: list[str] = field(default_factory=list)
 
 
 def analyze_repository(
@@ -74,6 +75,14 @@ def analyze_repository(
         primary_language,
     )
     evidence_strength = _build_evidence_strength(readme_files, test_entries, docs_entries, config_files)
+    code_anchor_chains = _build_code_anchor_chains(
+        readme_files=readme_files,
+        entrypoint_candidates=entrypoint_candidates,
+        source_layout=source_layout,
+        test_layout=test_layout,
+        config_files=config_files,
+        tooling_signals=tooling_signals,
+    )
 
     profile = RepositoryProfile(
         repo_label=repo.name,
@@ -99,6 +108,7 @@ def analyze_repository(
         config_files=config_files,
         tooling_signals=tooling_signals,
         evidence_strength=evidence_strength,
+        code_anchor_chains=code_anchor_chains,
     )
 
 
@@ -320,3 +330,56 @@ def _build_authority_notes(
     if not notes:
         notes.append("Repository structure is the primary source of truth because top-level docs are sparse.")
     return notes
+
+
+def _build_code_anchor_chains(
+    readme_files: list[str],
+    entrypoint_candidates: list[str],
+    source_layout: list[str],
+    test_layout: list[str],
+    config_files: list[str],
+    tooling_signals: dict[str, str],
+) -> list[str]:
+    chains: list[str] = []
+    if readme_files and entrypoint_candidates:
+        chains.append(
+            f"Follow `{readme_files[0]}` -> `{entrypoint_candidates[0]}` first to map the human-facing contract to the real entrypoint."
+        )
+
+    source_anchor = _choose_source_anchor(entrypoint_candidates, source_layout)
+    test_anchor = test_layout[0] if test_layout else None
+    config_anchor = config_files[0] if config_files else None
+
+    if source_anchor is not None and test_anchor is not None:
+        chains.append(
+            f"Follow `{source_anchor}` -> `{test_anchor}` to confirm the primary behavior path and its regression anchor."
+        )
+    elif source_anchor is not None:
+        chains.append(
+            f"Follow `{source_anchor}` as the main implementation anchor before widening into helper modules."
+        )
+
+    if tooling_signals.get("workspace_layout") == "monorepo":
+        workspace_source = next(
+            (path for path in source_layout if path.startswith(("apps/", "packages/"))),
+            None,
+        )
+        if workspace_source is not None:
+            chains.append(
+                f"Follow `package.json` -> `{workspace_source}` to understand how workspace scripts hand control to package-level source entrypoints."
+            )
+
+    if source_anchor is not None and config_anchor is not None:
+        chains.append(
+            f"Use `{config_anchor}` after `{source_anchor}` when you need the runtime or packaging boundary for a change."
+        )
+    return chains[:4]
+
+
+def _choose_source_anchor(entrypoint_candidates: list[str], source_layout: list[str]) -> str | None:
+    for candidate in entrypoint_candidates:
+        if candidate.startswith(("src/", "apps/", "packages/")):
+            return candidate
+    if source_layout:
+        return source_layout[0]
+    return None

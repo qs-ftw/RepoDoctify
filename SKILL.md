@@ -64,6 +64,14 @@ The bundled Python package and CLI are implementation helpers for the skill
 repository itself. They are useful for local verification and internal tooling,
 but they are not the primary user-facing invocation path.
 
+Treat the runtime's repo resolution rules as the source of truth for skill
+execution:
+
+- prefer the current working directory when it already looks like a real repo
+- prefer the explicit repo when the user clearly provided one
+- allow strict conflict checks to stop early when the current repo context and
+  requested repo disagree
+
 ## Output Isolation Rule
 
 By default, `RepoDoctify` must treat the target repository as read-only input.

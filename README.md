@@ -61,7 +61,7 @@ The current v1 helper flow is:
 
 The main Python entrypoint is `repodoctify.run_repodoctify(...)`.
 
-The main CLI entrypoints are:
+The bundled CLI entrypoints are:
 
 - `python -m repodoctify`
 - `repodoctify`
@@ -75,7 +75,7 @@ It always writes into an external workspace with these subdirectories:
 - `publish/`
 - `logs/`
 
-The CLI supports:
+The internal harness supports:
 
 - default no-arg behavior -> full Markdown docset
 - `plan` -> docset structure only
@@ -83,7 +83,7 @@ The CLI supports:
 - `html` -> full HTML output
 - `feishu` -> Feishu handoff
 
-The runtime and CLI also support `--reuse-latest` so a later render step can
+The runtime and harness also support `--reuse-latest` so a later render step can
 reuse an existing external workspace and shared IR instead of recomputing from
 scratch.
 
@@ -91,7 +91,7 @@ Target repository selection stays low-interruption by default:
 
 - if `--repo` is omitted, the current working directory is treated as the target
 - if an explicit repo path is passed, that path wins
-- a stricter conflict follow-up can be layered on top of the shared targeting helper when the caller needs it
+- the shared runtime also supports a strict conflict check so skill orchestration can stop early when the requested repo conflicts with the current repo context
 
 ## Local Development
 
@@ -123,7 +123,7 @@ This repository includes lightweight example repos under `examples/`:
 Use them to smoke-test installation and output quality without guessing which
 repo shape the current release is designed to support first.
 
-The bundled CLI remains useful as a developer harness when testing the repo
+The bundled CLI remains useful as an internal developer harness when testing the repo
 outside Codex:
 
 ```bash

@@ -2,11 +2,13 @@ import json
 
 import pytest
 
+from repodoctify.targeting import TargetRepoDecision
 from repodoctify.runtime import (
     COMMAND_FEISHU,
     COMMAND_HTML,
     COMMAND_PLAN,
     COMMAND_RENDER_MD,
+    resolve_repo_decision,
     run_repodoctify,
 )
 
@@ -98,3 +100,47 @@ def test_feishu_command_writes_handoff_when_dependencies_present(tmp_path):
     assert payload["delegate_skill"] == "feishu-knowledge-ops"
     assert payload["required_dependency"] == "lark-mcp"
     assert payload["document_titles"]
+
+
+def test_runtime_resolves_current_repo_by_default(tmp_path):
+    repo = _make_repo(tmp_path)
+
+    decision = resolve_repo_decision(current_dir=repo)
+
+    assert isinstance(decision, TargetRepoDecision)
+    assert decision.repo_path == repo.resolve()
+    assert decision.should_ask is False
+    assert decision.reason == "current_dir_repo"
+
+
+def test_runtime_flags_repo_conflict_in_strict_mode(tmp_path):
+    current_repo = _make_repo(tmp_path)
+    requested_repo = tmp_path / "other-repo"
+    requested_repo.mkdir()
+    (requested_repo / "README.md").write_text("# Other Repo\n", encoding="utf-8")
+
+    decision = resolve_repo_decision(
+        current_dir=current_repo,
+        requested_repo=requested_repo,
+        strict_conflict_check=True,
+    )
+
+    assert decision.should_ask is True
+    assert decision.reason == "repo_conflict"
+
+
+def test_runtime_rejects_conflicting_repo_execution_in_strict_mode(tmp_path):
+    current_repo = _make_repo(tmp_path)
+    requested_repo = tmp_path / "requested-repo"
+    requested_repo.mkdir()
+    (requested_repo / "README.md").write_text("# Requested Repo\n", encoding="utf-8")
+    (requested_repo / "src").mkdir()
+    (requested_repo / "src" / "app.py").write_text("def main():\n    return 'ok'\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="conflicts"):
+        run_repodoctify(
+            requested_repo,
+            current_dir=current_repo,
+            strict_conflict_check=True,
+            run_id="strict-conflict",
+        )

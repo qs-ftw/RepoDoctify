@@ -11,6 +11,7 @@ from .runtime import (
     COMMAND_PLAN,
     COMMAND_RENDER_MD,
     RepoDoctifyRunResult,
+    resolve_repo_decision,
     run_repodoctify,
 )
 from .targeting import TargetRepoDecision, resolve_target_repo
@@ -43,6 +44,7 @@ __all__ = [
     "find_latest_workspace",
     "render_html_docset",
     "render_markdown_docset",
+    "resolve_repo_decision",
     "resolve_target_repo",
     "resolve_workspace_root",
     "run_repodoctify",

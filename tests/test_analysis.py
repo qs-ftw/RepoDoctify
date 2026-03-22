@@ -47,3 +47,24 @@ def test_analyze_ts_repo_detects_workspace_and_stack_signals(tmp_path):
     assert "tsconfig.json" in analysis.config_files
     assert analysis.tooling_signals["package_manager"] == "npm-compatible"
     assert any(candidate.endswith("src/index.ts") for candidate in analysis.entrypoint_candidates)
+
+
+def test_analyze_repository_builds_code_anchor_chains_for_python_repo(tmp_path):
+    repo = tmp_path / "python-chain-demo"
+    repo.mkdir()
+    (repo / "README.md").write_text("# Python Chain Demo\n", encoding="utf-8")
+    (repo / "pyproject.toml").write_text("[project]\nname='python-chain-demo'\n", encoding="utf-8")
+    (repo / "src").mkdir()
+    (repo / "src" / "python_chain_demo").mkdir()
+    (repo / "src" / "python_chain_demo" / "cli.py").write_text("def main():\n    return 1\n", encoding="utf-8")
+    (repo / "src" / "python_chain_demo" / "service.py").write_text("def run():\n    return 'ok'\n", encoding="utf-8")
+    (repo / "tests").mkdir()
+    (repo / "tests" / "test_cli.py").write_text("def test_cli():\n    assert True\n", encoding="utf-8")
+
+    analysis = analyze_repository(repo)
+
+    assert analysis.code_anchor_chains
+    chain_text = "\n".join(analysis.code_anchor_chains)
+    assert "README.md" in chain_text
+    assert "src/python_chain_demo/cli.py" in chain_text
+    assert "tests/test_cli.py" in chain_text
