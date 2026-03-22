@@ -1,0 +1,96 @@
+{
+  "specs": [
+    {
+      "name": "homepage-mindmap",
+      "document_id": "KfzbdXoUBozdPTxERaDcYdS3nOh",
+      "anchor_substring": "如果你想快速记住当前知识树，我建议这样记：",
+      "position": "after",
+      "blocks": [
+        {
+          "kind": "heading3",
+          "text": "Mermaid 脑图：当前知识树的阅读分层"
+        },
+        {
+          "kind": "mermaid",
+          "mermaid": "mindmap\n  root((工程组项目学习))\n    总览层\n      两仓定位\n      阅读导航\n    新人启动层\n      service 启动\n      webcreator 启动\n    主链理解层\n      项目 聊天 配置\n      调度与状态\n    生成资产层\n      资源检索\n      页面 架构 布局\n      runtime backend\n    专题深挖层\n      权限风控\n      商业化绑定\n      模板知识源\n      节点化执行\n    排障收口层\n      trace 对齐\n      状态回写\n      demo 联动"
+        }
+      ]
+    },
+    {
+      "name": "project-chat-er",
+      "document_id": "HFURdIDBvoKcaPx1QMVcgAMmnQf",
+      "anchor_substring": "文本关系图：三类状态对象分别保存什么",
+      "position": "after",
+      "blocks": [
+        {
+          "kind": "mermaid",
+          "mermaid": "erDiagram\n    Project ||--o{ ChatMessage : has_history\n    Project ||--o{ ProjectConfig : has_snapshot\n    Project ||--o{ ProjectUserMapping : grants_access\n    ProjectConfig ||--o{ WorkflowState : tracks_run\n\n    Project {\n      bigint project_id\n      string requirement\n      string status\n    }\n    ChatMessage {\n      bigint project_id\n      string context_id\n      string role\n    }\n    ProjectConfig {\n      bigint project_id\n      string config_status\n      string config_json\n    }\n    ProjectUserMapping {\n      bigint project_id\n      bigint user_id\n      string role\n    }\n    WorkflowState {\n      bigint project_config_id\n      string run_status\n    }"
+        }
+      ]
+    },
+    {
+      "name": "order-binding-er",
+      "document_id": "Vmekd9ZpLovN4bxhoNnckD62nVc",
+      "anchor_substring": "还带优先级",
+      "position": "before",
+      "blocks": [
+        {
+          "kind": "heading3",
+          "text": "Mermaid 关系图：订单到权益落地的主数据链"
+        },
+        {
+          "kind": "mermaid",
+          "mermaid": "erDiagram\n    SKU ||--o{ SkuPrice : priced_by\n    Order ||--|{ OrderItem : contains\n    SKU ||--o{ OrderItem : sold_as\n    OrderItem ||--o{ UserBinding : grants\n    Order ||--o{ UserTemporaryConsumed : reserves\n    ProjectConfig ||--o{ UserTemporaryConsumed : consumes_on\n    UserBinding ||--o{ UserConsumedDetail : deducted_by\n    UserConsumed ||--|{ UserConsumedDetail : expands\n\n    SKU {\n      string sku_code\n      string sku_type\n    }\n    SkuPrice {\n      string sku_code\n      decimal price\n      string status\n    }\n    Order {\n      bigint order_id\n      string user_id\n      string order_status\n    }\n    OrderItem {\n      bigint order_item_id\n      bigint order_id\n      string sku_code\n    }\n    UserBinding {\n      bigint order_item_id\n      string status\n      datetime end_date\n    }\n    ProjectConfig {\n      bigint project_config_id\n      string status\n    }\n    UserTemporaryConsumed {\n      bigint order_id\n      bigint project_config_id\n      string operation_type\n    }\n    UserConsumed {\n      bigint consumed_id\n      string consume_type\n    }\n    UserConsumedDetail {\n      bigint binding_id\n      int consume_amount\n    }"
+        }
+      ]
+    },
+    {
+      "name": "platform-demo-sequence",
+      "document_id": "HGu1dMtoAoP1jNxTyIZcoz7Bnvh",
+      "anchor_substring": "更新链为什么仍然先回平台仓",
+      "position": "before",
+      "blocks": [
+        {
+          "kind": "heading3",
+          "text": "Mermaid 时序图：平台请求怎样收敛成最终 demo"
+        },
+        {
+          "kind": "mermaid",
+          "mermaid": "sequenceDiagram\n    participant FE as Frontend\n    participant API as Platform API\n    participant PZ as PZ Service\n    participant Proxy as RequestProxy\n    participant Engine as Webcreator v2\n    participant Exec as Execution Flow\n    participant State as Project ProjectConfig\n\n    FE->>API: 发起 requirement update demo 请求\n    API->>PZ: 进入平台主链\n    PZ->>PZ: 风控 额度 状态准备\n    PZ->>Proxy: 组装跨仓参数\n    Proxy->>Engine: 调用 v2 接口\n    Engine->>Exec: 启动生成或修改执行\n    Exec-->>Engine: 返回结构化结果或 url\n    Engine-->>Proxy: 结束本次执行\n    Proxy-->>PZ: 回传结果\n    PZ->>State: 回写项目 配置 聊天状态\n    PZ-->>FE: 返回平台认可的最终结果"
+        }
+      ]
+    },
+    {
+      "name": "trace-sequence",
+      "document_id": "XqTCdsUTvo62fkx4bgtccDDonub",
+      "anchor_substring": "平台侧日志为什么更适合先看“入口归属”",
+      "position": "before",
+      "blocks": [
+        {
+          "kind": "heading3",
+          "text": "Mermaid 时序图：trace_id 怎样穿过双仓并落到 exec_id"
+        },
+        {
+          "kind": "mermaid",
+          "mermaid": "sequenceDiagram\n    participant FE as Frontend\n    participant PT as Platform TraceMiddleware\n    participant API as Platform API\n    participant Proxy as RequestProxy\n    participant WT as Webcreator TraceMiddleware\n    participant Exec as Engine Exec\n    participant Log as Execute Log\n\n    FE->>PT: 带入或接收 trace_id\n    PT->>API: 写入 request context\n    API->>Proxy: 进入跨仓调用\n    Proxy->>WT: 透传同一个 trace_id\n    WT->>Exec: 启动执行并继承 trace_id\n    Exec->>Log: 记录 exec_id 节点进度 状态\n    Exec-->>WT: 返回 progress 或结果\n    WT-->>Proxy: 保留同一 trace_id\n    Proxy-->>API: 返回引擎结果\n    API-->>FE: 响应 X-Trace-ID"
+        }
+      ]
+    },
+    {
+      "name": "single-response-sequence",
+      "document_id": "ZaeRdUWSRoOmkPxtlfMcv5ivnYc",
+      "anchor_substring": "generateRequirementList_node",
+      "position": "before",
+      "blocks": [
+        {
+          "kind": "heading3",
+          "text": "Mermaid 时序图：启动执行 拿到 exec_id 再轮询 finish node"
+        },
+        {
+          "kind": "mermaid",
+          "mermaid": "sequenceDiagram\n    participant Caller as Service Caller\n    participant SR as single_response_service\n    participant Http as HttpUtil\n    participant Engine as Single Responsibility API\n    participant Log as execute_log_service\n\n    Caller->>SR: 发起生成或修改动作\n    SR->>Http: single_responsibility_execute\n    Http->>Engine: 启动执行\n    Engine-->>Http: 返回 exec_id\n    Http-->>SR: start_resp\n    SR->>Log: 记录 running log\n    loop progress polling\n        SR->>Http: single_responsibility_progress\n        Http->>Engine: 查询 exec_id 进度\n        Engine-->>Http: 返回 status 节点计数 all_nodes\n        Http-->>SR: progress_data\n    end\n    SR->>SR: 选择 finish node 抽取结果\n    SR->>Log: 更新 success 或 fail\n    SR-->>Caller: 返回最终结果"
+        }
+      ]
+    }
+  ]
+}

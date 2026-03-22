@@ -1,13 +1,13 @@
 # RepoDoctify
 
-`RepoDoctify` is a Codex skill repository. Its job is to turn an unfamiliar code
-repository into a structured learning docset.
+`RepoDoctify` is a portable repository-docset skill source. Its job is to turn
+an unfamiliar code repository into a structured learning docset.
 
 The repository currently contains:
 
 - the product design spec
 - the v1 implementation plan
-- the top-level skill contract
+- the canonical portable skill source at `skills/repo-doctify/`
 - reference documents for repository methodology and rendering rules
 - a small Python helper package for shared IR, workspace isolation, repo analysis, planning, composition, and renderers
 
@@ -16,6 +16,7 @@ The repository currently contains:
 The primary user-facing entrypoint is the Codex skill itself:
 
 - enter Codex CLI and trigger `$repo-doctify`
+- use `$repo-doctify plan|md|html|feishu` for explicit output modes
 - or let Codex dispatch `repo-doctify` automatically when the task matches
 
 The Python package in this repo exists to support the skill's internal runtime,
@@ -96,7 +97,7 @@ Target repository selection stays low-interruption by default:
 - the shared runtime also supports a strict conflict check so skill orchestration can stop early when the requested repo conflicts with the current repo context
 - runtime results also record the resolved repo path and the resolution reason so skill orchestration can inspect what happened
 
-## Local Development
+## Install And Use
 
 Run tests with:
 
@@ -104,17 +105,45 @@ Run tests with:
 pytest -v
 ```
 
-Install the local skill copy with:
+For local platform installs, use:
 
 ```bash
 python3 scripts/install_local_skill.py
+python3 scripts/install_local_skill.py --platform codex
+python3 scripts/install_local_skill.py --platform claude
+python3 scripts/install_local_skill.py --platform trae
 ```
 
-Use the installed skill from Codex CLI with:
+This installs from the canonical skill source at `skills/repo-doctify/`.
+
+Restart your assistant after installation so it reloads the skill registry.
+
+Recommended skill entrypoints on every platform:
 
 ```bash
 $repo-doctify
+$repo-doctify plan
+$repo-doctify md
+$repo-doctify html
+$repo-doctify feishu
 ```
+
+Use the default form when you want the full Markdown docset. Use the short
+forms when you want to force a specific mode.
+
+For Codex remote installation, the intended low-parameter path is:
+
+```text
+$skill-installer install https://github.com/qs-ftw/RepoDoctify/tree/main/skills/repo-doctify
+```
+
+For Claude Code distribution, build the release bundles and use the generated
+directory or zip package under `dist/release/claude/`.
+
+For Trae distribution, build the release bundles and use either:
+
+- `dist/release/trae/skills/repo-doctify/`
+- `dist/release/trae/rules/repo-doctify.md`
 
 ## Examples
 
@@ -140,6 +169,12 @@ outside Codex:
 ```bash
 python -m repodoctify --repo /path/to/repo
 python -m repodoctify html --repo /path/to/repo --reuse-latest
+```
+
+Build all release bundles with:
+
+```bash
+python3 scripts/build_release_bundles.py
 ```
 
 ## Output Targets
