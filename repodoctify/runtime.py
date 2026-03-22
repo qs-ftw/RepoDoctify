@@ -197,13 +197,6 @@ def run_repodoctify_request(request: RepoDoctifyRequest) -> RepoDoctifyRunResult
         raise RuntimeError(dependency_result.message)
 
     feishu_mode = request.feishu_mode or FeishuExecutionMode.PLAN_ONLY.value
-    auth_state = probe_feishu_auth_state(
-        installed_tools=request.installed_tools,
-        require_user_access_token=feishu_mode == FeishuExecutionMode.EXECUTE.value,
-        user_token_present=feishu_mode != FeishuExecutionMode.PLAN_ONLY.value,
-        user_token_validated=feishu_mode == FeishuExecutionMode.EXECUTE.value,
-        target_doc_probe_attempted=bool(request.feishu_target_doc_ids),
-    )
     manifest_path = workspace / "publish" / "manifest.json"
     _write_json(manifest_path, build_docset_manifest(profile, docs))
     publish_plan = build_feishu_publish_plan(
@@ -212,6 +205,14 @@ def run_repodoctify_request(request: RepoDoctifyRequest) -> RepoDoctifyRunResult
         manifest_path=manifest_path,
         execution_mode=FeishuExecutionMode(feishu_mode),
         requested_target_doc_ids=request.feishu_target_doc_ids,
+    )
+    auth_state = probe_feishu_auth_state(
+        installed_tools=request.installed_tools,
+        require_user_access_token=feishu_mode == FeishuExecutionMode.EXECUTE.value,
+        user_token_present=feishu_mode != FeishuExecutionMode.PLAN_ONLY.value,
+        user_token_validated=feishu_mode == FeishuExecutionMode.EXECUTE.value,
+        target_doc_probe_attempted=bool(request.feishu_target_doc_ids),
+        unresolved_target_documents=bool(publish_plan.get("execute_blockers")),
     )
     publish_plan_path = workspace / "publish" / "feishu-publish-plan.json"
     verification_path = workspace / "publish" / "verification-summary.json"

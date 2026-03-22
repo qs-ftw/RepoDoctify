@@ -221,3 +221,24 @@ def test_run_repodoctify_request_passes_requested_feishu_targets_into_publish_pl
     assert overview_target["target_source"] == "request"
     assert homepage_target["target_document_id"] == "doc_homepage_123"
     assert result.feishu_auth_state["target_doc_probe_attempted"] is True
+
+
+def test_run_repodoctify_request_blocks_execute_when_targets_are_unresolved(tmp_path):
+    repo = _make_repo(tmp_path)
+
+    request = RepoDoctifyRequest(
+        requested_repo=repo,
+        current_dir=tmp_path,
+        command=COMMAND_FEISHU,
+        installed_tools={"lark-mcp"},
+        run_id="feishu-execute-unresolved",
+        feishu_mode=FeishuExecutionMode.EXECUTE.value,
+    )
+
+    result = run_repodoctify_request(request)
+
+    assert result.feishu_execution_mode == FeishuExecutionMode.EXECUTE.value
+    assert result.feishu_auth_state["recommended_action"] == "resolve_target_doc"
+    assert result.feishu_auth_state["ready_for_execute"] is False
+    assert result.feishu_publish_plan["execute_ready"] is False
+    assert "unresolved_target_documents" in result.feishu_publish_plan["execute_blockers"]

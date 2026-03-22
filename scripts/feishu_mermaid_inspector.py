@@ -4,11 +4,15 @@ from __future__ import annotations
 import argparse
 import json
 import re
-import urllib.parse
-import urllib.request
 from pathlib import Path
 
-import lark_mcp_user_token_wrapper as wrapper
+from repodoctify.feishu import (
+    AppCredentials,
+    DEFAULT_CONFIG_PATH,
+    fetch_document_blocks,
+    fetch_tenant_access_token,
+    resolve_app_credentials,
+)
 
 
 MERMAID_COMPONENT_TYPE_ID = "blk_631fefbbae02400430b8f9f4"
@@ -71,49 +75,8 @@ def compare_mermaid_blocks(local_blocks: list[str], remote_blocks: list[dict]) -
     }
 
 
-def fetch_tenant_access_token(app_id: str, app_secret: str) -> str:
-    request = urllib.request.Request(
-        "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal",
-        data=json.dumps({"app_id": app_id, "app_secret": app_secret}).encode(),
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-    with urllib.request.urlopen(request, timeout=30) as response:
-        payload = json.loads(response.read().decode())
-    if payload.get("code") != 0:
-        raise RuntimeError(f"failed to get tenant token: {payload}")
-    return payload["tenant_access_token"]
-
-
-def fetch_document_blocks(document_id: str, bearer_token: str) -> list[dict]:
-    items: list[dict] = []
-    page_token = ""
-    while True:
-        query = {"page_size": 500, "document_revision_id": -1}
-        if page_token:
-            query["page_token"] = page_token
-        url = (
-            f"https://open.feishu.cn/open-apis/docx/v1/documents/{document_id}/blocks?"
-            f"{urllib.parse.urlencode(query)}"
-        )
-        request = urllib.request.Request(
-            url,
-            headers={"Authorization": f"Bearer {bearer_token}"},
-            method="GET",
-        )
-        with urllib.request.urlopen(request, timeout=30) as response:
-            payload = json.loads(response.read().decode())
-        if payload.get("code") != 0:
-            raise RuntimeError(f"failed to fetch document blocks: {payload}")
-        data = payload["data"]
-        items.extend(data["items"])
-        if not data.get("has_more"):
-            return items
-        page_token = data["page_token"]
-
-
 def resolve_bearer_token(
-    explicit_token: str | None, credentials: wrapper.AppCredentials
+    explicit_token: str | None, credentials: AppCredentials
 ) -> tuple[str, str]:
     if explicit_token:
         return explicit_token, "explicit"
@@ -159,7 +122,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--domain", help="Explicit Feishu domain override.")
     parser.add_argument(
         "--config-path",
-        default=str(wrapper.DEFAULT_CONFIG_PATH),
+        default=str(DEFAULT_CONFIG_PATH),
         help="Codex config path used to infer Feishu app credentials.",
     )
     return parser.parse_args()
@@ -167,7 +130,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    credentials = wrapper.resolve_app_credentials(args)
+    credentials = resolve_app_credentials(args)
     report = build_report(
         local_markdown_path=args.markdown,
         document_id=args.document_id,

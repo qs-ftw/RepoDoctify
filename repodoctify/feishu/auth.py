@@ -24,6 +24,7 @@ def probe_feishu_auth_state(
     user_token_present: bool = False,
     user_token_validated: bool = False,
     target_doc_probe_attempted: bool = False,
+    unresolved_target_documents: bool = False,
 ) -> FeishuAuthState:
     tools = set(installed_tools or set())
     dependency_available = "lark-mcp" in tools
@@ -61,6 +62,18 @@ def probe_feishu_auth_state(
             ready_for_execute=False,
             recommended_action="probe_target_doc",
             auth_blocker="token_not_validated",
+        )
+
+    if require_user_access_token and user_token_validated and unresolved_target_documents:
+        return FeishuAuthState(
+            dependency_available=True,
+            needs_user_access_token=True,
+            user_token_present=True,
+            user_token_validated=True,
+            target_doc_probe_attempted=target_doc_probe_attempted,
+            ready_for_execute=False,
+            recommended_action="resolve_target_doc",
+            auth_blocker="unresolved_target_document",
         )
 
     ready_action = "ready_for_execute" if user_token_validated else "ready_for_dry_run"

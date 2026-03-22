@@ -53,6 +53,10 @@ def test_feishu_script_wrapper_uses_repodoctify_library():
     assert "repodoctify.feishu" in text
     bridge_text = Path("scripts/publish_python_bridge_doc.py").read_text(encoding="utf-8")
     assert "repodoctify.feishu" in bridge_text
+    inspector_text = Path("scripts/feishu_mermaid_inspector.py").read_text(encoding="utf-8")
+    assert "repodoctify.feishu" in inspector_text
+    postprocessor_text = Path("scripts/feishu_mermaid_postprocessor.py").read_text(encoding="utf-8")
+    assert "repodoctify.feishu" in postprocessor_text
 
 
 def test_install_helper_targets_skill_directory_name():

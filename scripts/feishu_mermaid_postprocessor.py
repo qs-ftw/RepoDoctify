@@ -6,18 +6,21 @@ import json
 import re
 import time
 import urllib.error
-import urllib.parse
-import urllib.request
-import uuid
 from pathlib import Path
 
-import lark_mcp_user_token_wrapper as wrapper
 from feishu_mermaid_inspector import (
     MERMAID_COMPONENT_TYPE_ID,
     extract_local_mermaid_blocks,
     fetch_document_blocks,
     fetch_tenant_access_token,
     normalize_mermaid,
+)
+from repodoctify.feishu import (
+    AppCredentials,
+    DEFAULT_CONFIG_PATH,
+    create_document_child_block,
+    delete_document_child_range,
+    resolve_app_credentials,
 )
 
 
@@ -190,80 +193,6 @@ def resolve_current_source_block_position(
     return placement
 
 
-def post_json(url: str, data: dict, bearer_token: str) -> dict:
-    request = urllib.request.Request(
-        url,
-        data=json.dumps(data).encode(),
-        headers={
-            "Authorization": f"Bearer {bearer_token}",
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
-    with urllib.request.urlopen(request, timeout=30) as response:
-        payload = json.loads(response.read().decode())
-    if payload.get("code") != 0:
-        raise RuntimeError(f"Feishu request failed: {payload}")
-    return payload
-
-
-def delete_json(url: str, data: dict, bearer_token: str) -> dict:
-    request = urllib.request.Request(
-        url,
-        data=json.dumps(data).encode(),
-        headers={
-            "Authorization": f"Bearer {bearer_token}",
-            "Content-Type": "application/json",
-        },
-        method="DELETE",
-    )
-    with urllib.request.urlopen(request, timeout=30) as response:
-        payload = json.loads(response.read().decode())
-    if payload.get("code") != 0:
-        raise RuntimeError(f"Feishu request failed: {payload}")
-    return payload
-
-
-def create_document_child_block(
-    document_id: str,
-    parent_id: str,
-    child: dict,
-    index: int,
-    bearer_token: str,
-) -> dict:
-    client_token = str(uuid.uuid4())
-    query = urllib.parse.urlencode(
-        {"document_revision_id": -1, "client_token": client_token}
-    )
-    url = (
-        f"https://open.feishu.cn/open-apis/docx/v1/documents/{document_id}/blocks/"
-        f"{parent_id}/children?{query}"
-    )
-    return post_json(url, {"children": [child], "index": index}, bearer_token)
-
-
-def delete_document_child_range(
-    document_id: str,
-    parent_id: str,
-    start_index: int,
-    end_index: int,
-    bearer_token: str,
-) -> dict:
-    client_token = str(uuid.uuid4())
-    query = urllib.parse.urlencode(
-        {"document_revision_id": -1, "client_token": client_token}
-    )
-    url = (
-        f"https://open.feishu.cn/open-apis/docx/v1/documents/{document_id}/blocks/"
-        f"{parent_id}/children/batch_delete?{query}"
-    )
-    return delete_json(
-        url,
-        {"start_index": start_index, "end_index": end_index},
-        bearer_token,
-    )
-
-
 def apply_replacement_plan(
     document_id: str, replacements: list[dict], bearer_token: str
 ) -> list[dict]:
@@ -312,7 +241,7 @@ def apply_replacement_plan(
 
 
 def resolve_bearer_token(
-    explicit_token: str | None, credentials: wrapper.AppCredentials
+    explicit_token: str | None, credentials: AppCredentials
 ) -> tuple[str, str]:
     if explicit_token:
         return explicit_token, "explicit"
@@ -360,7 +289,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--domain", help="Explicit Feishu domain override.")
     parser.add_argument(
         "--config-path",
-        default=str(wrapper.DEFAULT_CONFIG_PATH),
+        default=str(DEFAULT_CONFIG_PATH),
         help="Codex config path used to infer Feishu app credentials.",
     )
     parser.add_argument(
@@ -373,7 +302,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    credentials = wrapper.resolve_app_credentials(args)
+    credentials = resolve_app_credentials(args)
     report, bearer_token = build_plan_report(
         local_markdown_path=args.markdown,
         document_id=args.document_id,

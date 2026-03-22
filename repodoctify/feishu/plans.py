@@ -31,6 +31,8 @@ class FeishuPublishTarget:
     target_document_id: str | None = None
     target_source: str = "new_document"
     target_lookup_key: str | None = None
+    target_resolution: str = "create_new"
+    execute_ready: bool = True
     requires_user_auth: bool = False
 
 
@@ -73,9 +75,17 @@ def build_feishu_publish_plan(
     requested_target_doc_ids: dict[str, str] | None = None,
 ) -> dict:
     requested_target_doc_ids = requested_target_doc_ids or {}
-    targets = [_target_for_document(doc, requested_target_doc_ids) for doc in docs]
+    targets = [_target_for_document(doc, requested_target_doc_ids, execution_mode) for doc in docs]
     ordered_targets = _order_targets(targets)
     verification = _build_verification_plan(ordered_targets)
+    execute_ready = all(target.execute_ready for target in ordered_targets)
+    execute_blockers = sorted(
+        {
+            "unresolved_target_documents"
+            for target in ordered_targets
+            if not target.execute_ready and target.publish_mode != FeishuPublishMode.CREATE_NEW
+        }
+    )
     return {
         "publisher": "repodoctify",
         "required_dependency": "lark-mcp",
@@ -83,6 +93,8 @@ def build_feishu_publish_plan(
         "repo_label": profile.repo_label,
         "manifest_path": str(manifest_path),
         "document_count": len(docs),
+        "execute_ready": execute_ready,
+        "execute_blockers": execute_blockers,
         "document_titles": [target.title for target in ordered_targets],
         "documents": [
             {
@@ -94,6 +106,8 @@ def build_feishu_publish_plan(
                 "target_document_id": target.target_document_id,
                 "target_source": target.target_source,
                 "target_lookup_key": target.target_lookup_key,
+                "target_resolution": target.target_resolution,
+                "execute_ready": target.execute_ready,
                 "requires_user_auth": target.requires_user_auth,
             }
             for target in ordered_targets
@@ -121,9 +135,24 @@ def _resolve_requested_target_document_id(
     return requested_target_doc_ids.get(document.doc_id) or requested_target_doc_ids.get(document.role)
 
 
+def _resolve_target_state(
+    execution_mode: FeishuExecutionMode,
+    publish_mode: FeishuPublishMode,
+    requested_target_document_id: str | None,
+) -> tuple[str, bool]:
+    if publish_mode == FeishuPublishMode.CREATE_NEW:
+        return "create_new", True
+    if requested_target_document_id:
+        return "request_pinned", True
+    if execution_mode == FeishuExecutionMode.EXECUTE:
+        return "lookup_required", False
+    return "lookup_planned", False
+
+
 def _target_for_document(
     document: DocumentSpec,
     requested_target_doc_ids: dict[str, str],
+    execution_mode: FeishuExecutionMode = FeishuExecutionMode.PLAN_ONLY,
 ) -> FeishuPublishTarget:
     requested_target_document_id = _resolve_requested_target_document_id(document, requested_target_doc_ids)
     mode = choose_feishu_update_strategy(
@@ -137,6 +166,11 @@ def _target_for_document(
     target_source = "request" if requested_target_document_id else "docset_plan"
     if mode == FeishuPublishMode.CREATE_NEW:
         target_source = "new_document"
+    target_resolution, execute_ready = _resolve_target_state(
+        execution_mode,
+        mode,
+        requested_target_document_id,
+    )
     if mode == FeishuPublishMode.UPDATE_HOMEPAGE_LAST:
         return FeishuPublishTarget(
             doc_id=document.doc_id,
@@ -147,6 +181,8 @@ def _target_for_document(
             target_document_id=requested_target_document_id,
             target_source=target_source,
             target_lookup_key=document.doc_id,
+            target_resolution=target_resolution,
+            execute_ready=execute_ready,
             requires_user_auth=True,
         )
     strategy = {
@@ -164,6 +200,8 @@ def _target_for_document(
         target_document_id=requested_target_document_id,
         target_source=target_source,
         target_lookup_key=None if mode == FeishuPublishMode.CREATE_NEW else document.doc_id,
+        target_resolution=target_resolution,
+        execute_ready=execute_ready,
         requires_user_auth=mode != FeishuPublishMode.CREATE_NEW,
     )
 

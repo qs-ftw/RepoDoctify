@@ -73,6 +73,25 @@ def test_feishu_publish_plan_uses_requested_target_doc_ids():
     assert homepage_target["target_source"] == "request"
 
 
+def test_feishu_publish_plan_marks_unresolved_execute_targets():
+    plan = build_feishu_publish_plan(
+        RepositoryProfile(repo_label="demo", source_path="/tmp/demo"),
+        [
+            DocumentSpec(doc_id="homepage", title="Homepage", role="homepage"),
+            DocumentSpec(doc_id="bridge", title="Bridge", role="bridge"),
+        ],
+        manifest_path="/tmp/out/manifest.json",
+        execution_mode=FeishuExecutionMode.EXECUTE,
+    )
+
+    bridge_target = next(document for document in plan["documents"] if document["doc_id"] == "bridge")
+
+    assert bridge_target["target_resolution"] == "lookup_required"
+    assert bridge_target["execute_ready"] is False
+    assert plan["execute_ready"] is False
+    assert plan["execute_blockers"] == ["unresolved_target_documents"]
+
+
 def test_feishu_publish_plan_can_be_saved_as_json(tmp_path):
     plan = build_feishu_publish_plan(
         RepositoryProfile(repo_label="demo", source_path="/tmp/demo"),
@@ -125,6 +144,19 @@ def test_probe_feishu_auth_state_reports_missing_user_auth_when_required():
         user_token_present=False,
     )
     assert state.recommended_action == "authorize_user_token"
+    assert state.ready_for_execute is False
+
+
+def test_probe_feishu_auth_state_requires_target_resolution_before_execute():
+    state = probe_feishu_auth_state(
+        installed_tools={"lark-mcp"},
+        require_user_access_token=True,
+        user_token_present=True,
+        user_token_validated=True,
+        unresolved_target_documents=True,
+    )
+    assert state.recommended_action == "resolve_target_doc"
+    assert state.auth_blocker == "unresolved_target_document"
     assert state.ready_for_execute is False
 
 
