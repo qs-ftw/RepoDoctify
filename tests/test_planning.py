@@ -1,5 +1,4 @@
 from repodoctify.analysis import analyze_repository
-from repodoctify.composer import compose_docset
 from repodoctify.planning import build_default_docset_plan
 
 
@@ -38,7 +37,7 @@ def test_planner_expands_for_more_complex_repo(tmp_path):
     assert "development-guide" in plan.documents
 
 
-def test_composer_uses_real_paths_and_language_specific_signals(tmp_path):
+def test_planner_keeps_doc_roles_and_titles_grounded(tmp_path):
     repo = tmp_path / "python-app"
     repo.mkdir()
     (repo / "README.md").write_text("# Python App\n", encoding="utf-8")
@@ -50,14 +49,7 @@ def test_composer_uses_real_paths_and_language_specific_signals(tmp_path):
 
     analysis = analyze_repository(repo)
     plan = build_default_docset_plan(analysis)
-    docs = compose_docset(analysis, plan)
-    code_path_doc = next(doc for doc in docs if doc.doc_id == "code-reading-path")
-    overview_doc = next(doc for doc in docs if doc.doc_id == "overview")
 
-    flattened = "\n".join(item for section in code_path_doc.sections for item in section.body)
-    overview_text = "\n".join(item for section in overview_doc.sections for item in section.body)
-
-    assert "README.md" in flattened
-    assert "src/app.py" in flattened
-    assert "tests/test_app.py" in flattened
-    assert "python" in overview_text.lower()
+    assert plan.document_titles["code-reading-path"] == "第一次读仓应该先抓哪条主链"
+    assert plan.document_roles["overview"] == "overview"
+    assert "code-reading-path" in plan.reading_routes["30 分钟建立主心智模型"]

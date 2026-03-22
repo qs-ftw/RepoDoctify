@@ -44,6 +44,7 @@ class RepositoryAnalysis:
     evidence_strength: dict[str, str] = field(default_factory=dict)
     code_anchor_details: list[CodeAnchorChain] = field(default_factory=list)
     code_anchor_chains: list[str] = field(default_factory=list)
+    readme_summary_lines: list[str] = field(default_factory=list)
 
 
 def analyze_repository(
@@ -61,6 +62,7 @@ def analyze_repository(
     top_level_files = [entry.name for entry in entries if entry.is_file()]
     top_level_directories = [entry.name for entry in entries if entry.is_dir()]
     readme_files = [name for name in top_level_files if name.lower().startswith("readme")]
+    readme_summary_lines = _extract_readme_summary(repo, readme_files)
     docs_entries = _collect_docs_entries(repo)
     source_entries = _detect_source_entries(repo, top_level_directories, file_inventory)
     test_entries = _detect_test_entries(repo, top_level_directories, file_inventory)
@@ -116,6 +118,7 @@ def analyze_repository(
         evidence_strength=evidence_strength,
         code_anchor_details=code_anchor_details,
         code_anchor_chains=code_anchor_chains,
+        readme_summary_lines=readme_summary_lines,
     )
 
 
@@ -161,7 +164,7 @@ def _detect_source_entries(
         path = repo / name
         if path.is_dir() and any(child.startswith(f"{name}/") and child.endswith(_SOURCE_FILE_SUFFIXES) for child in file_inventory):
             candidates.append(name)
-    return sorted(set(candidates))
+    return _sort_source_entries(set(candidates), repo.name)
 
 
 def _detect_test_entries(
@@ -323,9 +326,19 @@ def _detect_entrypoint_candidates(
         for path in file_inventory:
             if path.endswith(name):
                 candidates.append(path)
+    if primary_language == "python":
+        for path in file_inventory:
+            if path.startswith("scripts/") and path.endswith(".py"):
+                leaf = Path(path).name
+                if any(token in leaf for token in ("cli", "main", "app", "train", "serve", "web", "chat")):
+                    candidates.append(path)
     for path in file_inventory:
         if path.startswith(("src/", "apps/", "packages/", "cmd/", "internal/")) and path.endswith(_SOURCE_FILE_SUFFIXES):
             candidates.append(path)
+        if primary_language == "python" and path.count("/") == 1 and path.endswith((".py",)):
+            parent = path.split("/", 1)[0]
+            if parent not in {"tests", "dev", "runs"}:
+                candidates.append(path)
     if "go.mod" in top_level_files:
         candidates.append("go.mod")
     if "Cargo.toml" in top_level_files:
@@ -337,14 +350,18 @@ def _detect_entrypoint_candidates(
     if "build.gradle.kts" in top_level_files:
         candidates.append("build.gradle.kts")
 
-    ordered: list[str] = []
+    unique_candidates: list[str] = []
     seen: set[str] = set()
     for candidate in candidates:
         normalized = candidate.replace(str(repo) + "/", "")
         if normalized not in seen:
             seen.add(normalized)
-            ordered.append(normalized)
-    return ordered[:10]
+            unique_candidates.append(normalized)
+    ordered = sorted(
+        unique_candidates,
+        key=lambda candidate: (-_entrypoint_score(candidate, repo.name, primary_language), candidate),
+    )
+    return ordered[:12]
 
 
 def _build_evidence_strength(
@@ -368,13 +385,13 @@ def _build_authority_notes(
 ) -> list[str]:
     notes: list[str] = []
     if readme_files:
-        notes.append("README files provide the first repository-level contract.")
+        notes.append("README 往往提供第一层项目契约和外部定位。")
     if test_entries:
-        notes.append("Test directories provide executable evidence for behavior and boundaries.")
+        notes.append("测试目录提供了可执行的行为证据和边界证据。")
     if config_files:
-        notes.append("Top-level config files reveal runtime, build, and packaging assumptions.")
+        notes.append("顶层配置文件会暴露运行方式、构建方式和打包假设。")
     if not notes:
-        notes.append("Repository structure is the primary source of truth because top-level docs are sparse.")
+        notes.append("当顶层文档稀疏时，仓库结构本身就是最直接的事实来源。")
     return notes
 
 
@@ -451,18 +468,22 @@ def _render_code_anchor_chain(chain: CodeAnchorChain) -> str:
 
     if chain.contract_anchor:
         return (
-            f"Follow this chain for {chain.label.lower()}: `{chain.contract_anchor}` -> {joined}. "
-            "Use it to understand the contract, the handoff into implementation, and the regression anchor."
+            f"先顺着这条链读：`{chain.contract_anchor}` -> {joined}。"
+            " 这条链最适合用来理解外部契约、实现交接点和回归锚点。"
         )
     return (
-        f"Follow this chain for {chain.label.lower()}: {joined}. "
-        "Use it to understand the entrypoint, the implementation handoff, and the regression anchor."
+        f"先顺着这条链读：{joined}。"
+        " 这条链最适合用来理解入口、实现交接点和回归锚点。"
     )
 
 
 def _choose_entry_anchor(entrypoint_candidates: list[str], primary_language: str) -> str | None:
+    ranked = sorted(
+        entrypoint_candidates,
+        key=lambda candidate: (-_entrypoint_score(candidate, "", primary_language), candidate),
+    )
     preferred_suffixes = {
-        "python": ("cli.py", "__main__.py", "main.py", "app.py"),
+        "python": ("chat_cli.py", "cli.py", "__main__.py", "main.py", "app.py"),
         "typescript": ("main.ts", "index.ts", "app.ts", "cli.ts"),
         "javascript": ("main.js", "index.js", "app.js", "cli.js"),
         "go": ("cmd/server/main.go", "cmd/main.go", "main.go"),
@@ -470,10 +491,14 @@ def _choose_entry_anchor(entrypoint_candidates: list[str], primary_language: str
         "java": ("src/main/java/App.java", "src/main/java/Main.java"),
     }.get(primary_language, ("main.py", "main.ts", "main.js", "main.go", "src/main.rs"))
     for suffix in preferred_suffixes:
-        for candidate in entrypoint_candidates:
+        for candidate in ranked:
             if candidate.endswith(suffix):
                 return candidate
-    return _first_matching(entrypoint_candidates, prefixes=("src/", "apps/", "packages/", "cmd/", "internal/"))
+    for candidate in ranked:
+        leaf = Path(candidate).name
+        if primary_language == "python" and candidate.startswith("scripts/") and "cli" in leaf:
+            return candidate
+    return _first_matching(ranked, prefixes=("scripts/", "src/", "apps/", "packages/", "cmd/", "internal/"))
 
 
 def _choose_implementation_anchor(
@@ -491,16 +516,17 @@ def _choose_implementation_anchor(
         "rust": ("lib.rs", "mod.rs"),
         "java": ("Service.java", "App.java"),
     }.get(primary_language, ("service.py", "service.ts", "service.js", "service.go"))
-    if entry_anchor is not None:
-        entry_parent = str(Path(entry_anchor).parent)
-        for name in preferred_names:
-            for path in source_layout:
-                if path.startswith(entry_parent + "/") and path.endswith(name) and path != entry_anchor:
-                    return path
+    ranked_paths = sorted(
+        source_layout,
+        key=lambda path: (-_implementation_path_score(path, entry_anchor, primary_language), path),
+    )
     for name in preferred_names:
-        for path in source_layout:
+        for path in ranked_paths:
             if path.endswith(name) and path != entry_anchor:
                 return path
+    for path in ranked_paths:
+        if path != entry_anchor:
+            return path
     return None
 
 
@@ -529,6 +555,119 @@ def _choose_config_anchor(config_files: list[str], primary_language: str) -> str
         if candidate in config_files:
             return candidate
     return config_files[0] if config_files else None
+
+
+def _extract_readme_summary(repo: Path, readme_files: list[str]) -> list[str]:
+    if not readme_files:
+        return []
+    readme_path = repo / readme_files[0]
+    try:
+        lines = readme_path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return []
+    summary: list[str] = []
+    for raw_line in lines:
+        line = raw_line.strip()
+        if (
+            not line
+            or line.startswith("#")
+            or line.startswith("```")
+            or line.startswith("![")
+            or line.startswith("[")
+            or line.startswith("<")
+        ):
+            continue
+        summary.append(_condense_summary_line(line))
+        if len(summary) == 2:
+            break
+    return summary
+
+
+def _sort_source_entries(entries: set[str], repo_name: str) -> list[str]:
+    return sorted(entries, key=lambda name: (-_source_entry_score(name, repo_name), name))
+
+
+def _source_entry_score(name: str, repo_name: str) -> int:
+    normalized_name = name.lower().replace("-", "_")
+    normalized_repo = repo_name.lower().replace("-", "_")
+    score = 0
+    if normalized_name == normalized_repo:
+        score += 100
+    if normalized_name == normalized_repo.removesuffix("_repo"):
+        score += 90
+    if name == "src":
+        score += 80
+    if name in {"app", "apps", "lib", "packages", "package", "server", "client"}:
+        score += 60
+    if name in {"scripts", "cmd", "internal"}:
+        score += 35
+    if name in {"tasks"}:
+        score += 20
+    if name in {"dev", "examples", "runs", "tools", "benchmarks"}:
+        score -= 20
+    return score
+
+
+def _entrypoint_score(candidate: str, repo_name: str, primary_language: str) -> int:
+    score = 0
+    leaf = Path(candidate).name.lower()
+    normalized_repo = repo_name.lower().replace("-", "_")
+    if candidate.startswith("scripts/"):
+        score += 40
+    if candidate.startswith(("src/", "cmd/", "apps/", "packages/")):
+        score += 30
+    if candidate.startswith(("dev/", "runs/")):
+        score -= 40
+    if leaf in {"cli.py", "chat_cli.py", "__main__.py", "main.py", "app.py", "main.ts", "main.js"}:
+        score += 70
+    if "cli" in leaf or "main" in leaf or "serve" in leaf or "train" in leaf or "chat" in leaf:
+        score += 35
+    if leaf.startswith("readme"):
+        score -= 20
+    if leaf in CONFIG_FILE_NAMES:
+        score -= 10
+    if normalized_repo and normalized_repo in candidate.lower():
+        score += 15
+    if primary_language == "python" and candidate.endswith(".py"):
+        score += 10
+    return score
+
+
+def _implementation_path_score(path: str, entry_anchor: str | None, primary_language: str) -> int:
+    score = 0
+    leaf = Path(path).name.lower()
+    parent = Path(path).parent.as_posix()
+    if parent.startswith(("src/",)):
+        score += 40
+    if "/" not in path:
+        score -= 10
+    if path.startswith(("dev/", "scripts/", "runs/")):
+        score -= 35
+    if entry_anchor and Path(entry_anchor).parent.as_posix() == parent and path != entry_anchor:
+        score += 10
+    preferred_tokens = {
+        "python": ("engine.py", "service.py", "core.py", "runner.py", "pipeline.py", "gpt.py", "model.py"),
+        "typescript": ("service.ts", "core.ts", "runner.ts", "model.ts", "engine.ts"),
+        "javascript": ("service.js", "core.js", "runner.js", "model.js", "engine.js"),
+        "go": ("service.go", "app.go", "server.go"),
+        "rust": ("lib.rs", "mod.rs"),
+        "java": ("Service.java", "Engine.java", "App.java"),
+    }.get(primary_language, ())
+    if any(leaf.endswith(token) for token in preferred_tokens):
+        score += 60
+    if leaf == "__init__.py":
+        score -= 15
+    return score
+
+
+def _condense_summary_line(line: str, max_length: int = 260) -> str:
+    cleaned = " ".join(line.split())
+    if len(cleaned) <= max_length:
+        return cleaned
+    sentence_end = cleaned.find(". ")
+    if 0 < sentence_end < max_length:
+        return cleaned[: sentence_end + 1]
+    return cleaned[: max_length - 3].rstrip() + "..."
 
 
 _SOURCE_FILE_SUFFIXES = (".py", ".ts", ".tsx", ".js", ".jsx", ".go", ".rs", ".java")

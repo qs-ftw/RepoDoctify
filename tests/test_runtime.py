@@ -35,12 +35,16 @@ def test_default_run_writes_markdown_outputs_to_external_workspace(tmp_path):
     assert result.command == COMMAND_RENDER_MD
     assert repo not in result.workspace.parents
     assert (result.workspace / "plan" / "docset-plan.json").exists()
-    assert (result.workspace / "ir" / "docset-ir.json").exists()
-    assert (result.workspace / "md" / "README.md").exists()
-    assert (result.workspace / "md" / "manifest.json").exists()
+    assert (result.workspace / "ir" / "repository-analysis.json").exists()
+    assert (result.workspace / "artifacts" / "manifest.json").exists()
+    assert (result.workspace / "prompt" / "packet.json").exists()
+    assert (result.workspace / "prompt" / "md-output-contract.json").exists()
+    assert (result.workspace / "prompt" / "write-targets.json").exists()
+    assert (result.workspace / "prompt" / "document-prompts.json").exists()
+    assert list((result.workspace / "md").iterdir()) == []
     assert not (repo / ".repodoctify-workspaces").exists()
 
-    manifest = json.loads((result.workspace / "md" / "manifest.json").read_text(encoding="utf-8"))
+    manifest = json.loads((result.workspace / "artifacts" / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["repo_label"] == "sample-repo"
     assert manifest["documents"]
     assert result.resolved_repo_path == repo.resolve()
@@ -54,21 +58,23 @@ def test_plan_command_stops_before_rendering_outputs(tmp_path):
 
     assert result.command == COMMAND_PLAN
     assert (result.workspace / "plan" / "docset-plan.json").exists()
-    assert not (result.workspace / "ir" / "docset-ir.json").exists()
+    assert not (result.workspace / "ir" / "repository-analysis.json").exists()
     assert list((result.workspace / "md").iterdir()) == []
     assert list((result.workspace / "html").iterdir()) == []
+    assert list((result.workspace / "prompt").iterdir()) == []
 
 
-def test_html_command_writes_html_pages(tmp_path):
+def test_html_command_writes_prompt_bundle_not_html_pages(tmp_path):
     repo = _make_repo(tmp_path)
 
     result = run_repodoctify(repo, command=COMMAND_HTML, run_id="html")
 
     assert result.command == COMMAND_HTML
     assert (result.workspace / "plan" / "docset-plan.json").exists()
-    assert (result.workspace / "ir" / "docset-ir.json").exists()
-    assert (result.workspace / "html" / "index.html").exists()
-    assert (result.workspace / "html" / "homepage.html").exists()
+    assert (result.workspace / "ir" / "repository-analysis.json").exists()
+    assert (result.workspace / "prompt" / "packet.json").exists()
+    assert (result.workspace / "prompt" / "html-output-contract.json").exists()
+    assert list((result.workspace / "html").iterdir()) == []
 
 
 def test_runtime_can_reuse_existing_workspace(tmp_path):
@@ -78,8 +84,8 @@ def test_runtime_can_reuse_existing_workspace(tmp_path):
     second_result = run_repodoctify(repo, command=COMMAND_HTML, reuse_latest=True)
 
     assert second_result.workspace == first_result.workspace
-    assert (first_result.workspace / "md" / "README.md").exists()
-    assert (first_result.workspace / "html" / "index.html").exists()
+    assert (first_result.workspace / "prompt" / "md-output-contract.json").exists()
+    assert (first_result.workspace / "prompt" / "html-output-contract.json").exists()
 
 
 def test_feishu_command_requires_lark_mcp(tmp_path):
@@ -169,7 +175,7 @@ def test_run_repodoctify_request_supports_skill_facing_execution(tmp_path):
     assert result.command == COMMAND_RENDER_MD
     assert result.resolved_repo_path == repo.resolve()
     assert result.repo_resolution_reason == "explicit_repo"
-    assert (result.workspace / "md" / "README.md").exists()
+    assert (result.workspace / "prompt" / "md-output-contract.json").exists()
 
 
 def test_run_repodoctify_request_supports_feishu_dry_run_mode(tmp_path):

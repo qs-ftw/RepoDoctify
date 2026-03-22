@@ -9,7 +9,7 @@ The repository currently contains:
 - the v1 implementation plan
 - the canonical portable skill source at `skills/repo-doctify/`
 - reference documents for repository methodology and rendering rules
-- a small Python helper package for shared IR, workspace isolation, repo analysis, planning, composition, and renderers
+- a small Python helper package for workspace isolation, repo analysis, docset planning, prompt-bundle preparation, and Feishu handoff
 
 ## Primary Usage
 
@@ -20,7 +20,8 @@ The primary user-facing entrypoint is the Codex skill itself:
 - or let Codex dispatch `repo-doctify` automatically when the task matches
 
 The Python package in this repo exists to support the skill's internal runtime,
-testing, and local verification. It is not the main user contract.
+testing, and local verification. It is not allowed to synthesize final document
+prose as if it were the skill itself.
 
 ## Release Focus
 
@@ -43,7 +44,8 @@ With no explicit subcommand, `RepoDoctify` should behave as:
 
 1. plan the docset structure
 2. generate shared intermediate results
-3. render the full Markdown docset
+3. prepare the Markdown authoring prompt bundle
+4. let the model generate the final Markdown docset from that bundle
 
 The default path should also generate:
 
@@ -58,8 +60,9 @@ The current v1 helper flow is:
 
 1. analyze the target repository
 2. build a default docset plan
-3. compose a shared IR
-4. render Markdown or HTML, or execute RepoDoctify's Feishu publishing path
+3. persist repository analysis and manifest data
+4. prepare a mode-specific prompt bundle for Markdown, HTML, or Feishu
+5. let the skill author the final content from that bundle
 
 The main Python compatibility entrypoint is `repodoctify.run_repodoctify(...)`.
 The skill-facing runtime entrypoint is `repodoctify.run_repodoctify_request(...)`.
@@ -73,6 +76,8 @@ It always writes into an external workspace with these subdirectories:
 
 - `plan/`
 - `ir/`
+- `artifacts/`
+- `prompt/`
 - `md/`
 - `html/`
 - `publish/`
@@ -80,11 +85,11 @@ It always writes into an external workspace with these subdirectories:
 
 The internal harness supports:
 
-- default no-arg behavior -> full Markdown docset
+- default no-arg behavior -> Markdown prompt bundle
 - `plan` -> docset structure only
-- `md` -> full Markdown output
-- `html` -> full HTML output
-- `feishu` -> Feishu handoff
+- `md` -> Markdown prompt bundle
+- `html` -> HTML prompt bundle
+- `feishu` -> Feishu prompt bundle + publish handoff
 
 The runtime and harness also support `--reuse-latest` so a later render step can
 reuse an existing external workspace and shared IR instead of recomputing from
@@ -128,7 +133,7 @@ $repo-doctify html
 $repo-doctify feishu
 ```
 
-Use the default form when you want the full Markdown docset. Use the short
+Use the default form when you want the Markdown generation flow. Use the short
 forms when you want to force a specific mode.
 
 For Codex remote installation, the intended low-parameter path is:
@@ -188,7 +193,7 @@ python3 scripts/build_release_bundles.py
 Feishu output is optional and depends on an external `lark-mcp` installation.
 
 If `lark-mcp` is unavailable, the runtime raises a clear dependency error instead
-of blocking Markdown or HTML output.
+of blocking Markdown or HTML prompt-bundle preparation.
 
 RepoDoctify owns the Feishu publication plan, update strategy, verification
 rules, and bundled helper scripts. `lark-mcp` remains an external dependency

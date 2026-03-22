@@ -13,7 +13,7 @@ $repo-doctify html
 $repo-doctify feishu
 ```
 
-The default form renders the full Markdown docset. The short forms force a
+The default form prepares the Markdown prompt bundle. The short forms force a
 specific output mode.
 
 This directory is the canonical portable skill source used for Codex, Claude

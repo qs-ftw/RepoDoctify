@@ -15,6 +15,7 @@ Default behavior:
 
 1. Plan the output framework.
 2. Generate the shared intermediate result.
-3. Render the full Markdown docset.
+3. Prepare the Markdown prompt bundle.
+4. Let the model generate the final Markdown docset from that bundle.
 
 Keep generated artifacts outside the analyzed repository by default.

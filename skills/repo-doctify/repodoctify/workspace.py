@@ -5,7 +5,7 @@ from pathlib import Path
 from uuid import uuid4
 
 
-REQUIRED_SUBDIRECTORIES = ("plan", "ir", "md", "html", "publish", "logs")
+REQUIRED_SUBDIRECTORIES = ("plan", "ir", "artifacts", "prompt", "md", "html", "publish", "logs")
 WORKSPACE_METADATA_FILE = "workspace-metadata.json"
 
 

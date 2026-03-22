@@ -5,7 +5,6 @@ import json
 from pathlib import Path
 
 from .analysis import analyze_repository
-from .composer import compose_docset
 from .feishu_handoff import (
     FeishuProbeAdapter,
     FeishuExecutionMode,
@@ -14,11 +13,10 @@ from .feishu_handoff import (
     ensure_feishu_dependencies,
     probe_feishu_auth_state,
 )
-from .html_renderer import render_html_docset
-from .manifest import build_docset_manifest
-from .markdown_renderer import render_markdown_docset
-from .models import DocumentSpec, DocsetPlan, RepositoryProfile, SectionNode
+from .manifest import build_docset_manifest_from_plan
+from .models import DocsetPlan, RepositoryProfile
 from .planning import build_default_docset_plan
+from .prompting import build_prompt_bundle
 from .targeting import TargetRepoDecision, resolve_target_repo
 from .workspace import ensure_external_workspace, find_latest_workspace, write_workspace_metadata
 
@@ -37,6 +35,7 @@ class RepoDoctifyRunResult:
     workspace: Path
     plan_path: Path
     ir_path: Path | None
+    prompt_bundle_path: Path | None
     written_files: list[Path]
     resolved_repo_path: Path
     repo_resolution_reason: str
@@ -122,8 +121,8 @@ def run_repodoctify_request(request: RepoDoctifyRequest) -> RepoDoctifyRunResult
     )
     analysis = None
     plan = None
-    docs = None
-    ir_path = workspace / "ir" / "docset-ir.json"
+    ir_path = workspace / "ir" / "repository-analysis.json"
+    prompt_bundle_path: Path | None = None
 
     written_files: list[Path] = []
     write_workspace_metadata(workspace, repo)
@@ -142,54 +141,45 @@ def run_repodoctify_request(request: RepoDoctifyRequest) -> RepoDoctifyRunResult
             workspace=workspace,
             plan_path=plan_path,
             ir_path=None,
+            prompt_bundle_path=None,
             written_files=written_files,
             resolved_repo_path=repo,
             repo_resolution_reason=decision.reason,
         )
 
-    profile: RepositoryProfile
     if request.reuse_latest and plan_path.exists() and ir_path.exists():
-        profile, plan, docs = _load_ir_bundle(ir_path)
+        analysis, plan = _load_analysis_bundle(ir_path, plan_path)
     else:
         analysis = analyze_repository(repo, public_locator=request.public_locator)
         plan = build_default_docset_plan(analysis)
-        docs = compose_docset(analysis, plan)
-        profile = analysis.profile
-        _write_plan(plan_path, profile, plan)
-        _write_json(
-            ir_path,
-            {
-                "repository_profile": asdict(profile),
-                "docset_plan": asdict(plan),
-                "documents": [asdict(doc) for doc in docs],
-            },
-        )
+        _write_plan(plan_path, analysis.profile, plan)
+        _write_json(ir_path, asdict(analysis))
     if plan_path not in written_files:
         written_files.append(plan_path)
     if ir_path not in written_files:
         written_files.append(ir_path)
 
-    if resolved_command == COMMAND_RENDER_MD:
-        render_result = render_markdown_docset(profile, docs)
-        written_files.extend(_write_files(workspace / "md", render_result.files))
-        return RepoDoctifyRunResult(
-            command=resolved_command,
-            workspace=workspace,
-            plan_path=plan_path,
-            ir_path=ir_path,
-            written_files=written_files,
-            resolved_repo_path=repo,
-            repo_resolution_reason=decision.reason,
-        )
+    prompt_bundle_path = workspace / "prompt" / "packet.json"
+    prompt_bundle = build_prompt_bundle(
+        analysis=analysis,
+        plan=plan,
+        command=resolved_command,
+        workspace=workspace,
+    )
+    manifest_path = workspace / "artifacts" / "manifest.json"
+    _write_json(manifest_path, build_docset_manifest_from_plan(analysis.profile, plan))
+    written_files.extend(_write_files(workspace / "prompt", prompt_bundle.files))
+    written_files.append(manifest_path)
+    if prompt_bundle_path not in written_files:
+        written_files.append(prompt_bundle_path)
 
-    if resolved_command == COMMAND_HTML:
-        render_result = render_html_docset(profile, docs)
-        written_files.extend(_write_files(workspace / "html", render_result.files))
+    if resolved_command == COMMAND_RENDER_MD or resolved_command == COMMAND_HTML:
         return RepoDoctifyRunResult(
             command=resolved_command,
             workspace=workspace,
             plan_path=plan_path,
             ir_path=ir_path,
+            prompt_bundle_path=prompt_bundle_path,
             written_files=written_files,
             resolved_repo_path=repo,
             repo_resolution_reason=decision.reason,
@@ -200,13 +190,14 @@ def run_repodoctify_request(request: RepoDoctifyRequest) -> RepoDoctifyRunResult
         raise RuntimeError(dependency_result.message)
 
     feishu_mode = request.feishu_mode or FeishuExecutionMode.PLAN_ONLY.value
-    manifest_path = workspace / "publish" / "manifest.json"
-    _write_json(manifest_path, build_docset_manifest(profile, docs))
+    publish_manifest_path = workspace / "publish" / "manifest.json"
+    _write_json(publish_manifest_path, build_docset_manifest_from_plan(analysis.profile, plan))
+    doc_specs = _plan_documents(plan)
     probe_summary = None
     initial_plan = build_feishu_publish_plan(
-        profile,
-        docs,
-        manifest_path=manifest_path,
+        analysis.profile,
+        doc_specs,
+        manifest_path=publish_manifest_path,
         execution_mode=FeishuExecutionMode(feishu_mode),
         requested_target_doc_ids=request.feishu_target_doc_ids,
     )
@@ -214,9 +205,9 @@ def run_repodoctify_request(request: RepoDoctifyRequest) -> RepoDoctifyRunResult
         adapter = request.feishu_probe_adapter or FeishuProbeAdapter()
         probe_summary = adapter.probe_targets(initial_plan)
     publish_plan = build_feishu_publish_plan(
-        profile,
-        docs,
-        manifest_path=manifest_path,
+        analysis.profile,
+        doc_specs,
+        manifest_path=publish_manifest_path,
         execution_mode=FeishuExecutionMode(feishu_mode),
         requested_target_doc_ids=request.feishu_target_doc_ids,
         probe_results=probe_summary,
@@ -239,12 +230,13 @@ def run_repodoctify_request(request: RepoDoctifyRequest) -> RepoDoctifyRunResult
     if probe_summary is not None:
         _write_json(probe_summary_path, probe_summary)
         written_files.append(probe_summary_path)
-    written_files.extend([manifest_path, publish_plan_path, verification_path, auth_state_path])
+    written_files.extend([publish_manifest_path, publish_plan_path, verification_path, auth_state_path])
     return RepoDoctifyRunResult(
         command=resolved_command,
         workspace=workspace,
         plan_path=plan_path,
         ir_path=ir_path,
+        prompt_bundle_path=prompt_bundle_path,
         written_files=written_files,
         resolved_repo_path=repo,
         repo_resolution_reason=decision.reason,
@@ -297,16 +289,62 @@ def _resolve_workspace(
     return ensure_external_workspace(repo_path, workspace_root=workspace_root, run_id=run_id)
 
 
-def _load_ir_bundle(ir_path: Path) -> tuple[RepositoryProfile, DocsetPlan, list[DocumentSpec]]:
-    payload = json.loads(ir_path.read_text(encoding="utf-8"))
-    profile = RepositoryProfile(**payload["repository_profile"])
-    plan = DocsetPlan(**payload["docset_plan"])
-    documents = [_document_from_dict(item) for item in payload["documents"]]
-    return profile, plan, documents
+def _load_analysis_bundle(ir_path: Path, plan_path: Path):
+    from .analysis import RepositoryAnalysis
+    from .models import CodeAnchorChain
+
+    analysis_payload = json.loads(ir_path.read_text(encoding="utf-8"))
+    plan_payload = json.loads(plan_path.read_text(encoding="utf-8"))
+    profile = RepositoryProfile(
+        repo_label=analysis_payload["profile"]["repo_label"],
+        source_path=analysis_payload["profile"]["source_path"],
+        public_locator=analysis_payload["profile"].get("public_locator"),
+        primary_audience=analysis_payload["profile"].get("primary_audience"),
+        source_authority_notes=list(analysis_payload["profile"].get("source_authority_notes", [])),
+    )
+    code_anchor_details = [CodeAnchorChain(**item) for item in analysis_payload.get("code_anchor_details", [])]
+    analysis = RepositoryAnalysis(
+        profile=profile,
+        repo_kind=analysis_payload.get("repo_kind", "generic_repo"),
+        primary_language=analysis_payload.get("primary_language", "unknown"),
+        top_level_files=list(analysis_payload.get("top_level_files", [])),
+        top_level_directories=list(analysis_payload.get("top_level_directories", [])),
+        readme_files=list(analysis_payload.get("readme_files", [])),
+        entrypoint_candidates=list(analysis_payload.get("entrypoint_candidates", [])),
+        docs_entries=list(analysis_payload.get("docs_entries", [])),
+        source_entries=list(analysis_payload.get("source_entries", [])),
+        test_entries=list(analysis_payload.get("test_entries", [])),
+        source_layout=list(analysis_payload.get("source_layout", [])),
+        test_layout=list(analysis_payload.get("test_layout", [])),
+        docs_layout=list(analysis_payload.get("docs_layout", [])),
+        config_files=list(analysis_payload.get("config_files", [])),
+        tooling_signals=dict(analysis_payload.get("tooling_signals", {})),
+        evidence_strength=dict(analysis_payload.get("evidence_strength", {})),
+        code_anchor_details=code_anchor_details,
+        code_anchor_chains=list(analysis_payload.get("code_anchor_chains", [])),
+        readme_summary_lines=list(analysis_payload.get("readme_summary_lines", [])),
+    )
+    plan = DocsetPlan(
+        documents=list(plan_payload.get("documents", [])),
+        document_titles=dict(plan_payload.get("document_titles", {})),
+        document_roles=dict(plan_payload.get("document_roles", {})),
+        reading_routes=dict(plan_payload.get("reading_routes", {})),
+        readme_aggregation_strategy=plan_payload.get(
+            "readme_aggregation_strategy",
+            "homepage_plus_doc_inventory",
+        ),
+    )
+    return analysis, plan
 
 
-def _document_from_dict(payload: dict) -> DocumentSpec:
-    sections = [SectionNode(**section) for section in payload.get("sections", [])]
-    data = dict(payload)
-    data["sections"] = sections
-    return DocumentSpec(**data)
+def _plan_documents(plan: DocsetPlan):
+    from .models import DocumentSpec
+
+    return [
+        DocumentSpec(
+            doc_id=doc_id,
+            title=plan.document_titles[doc_id],
+            role=plan.document_roles[doc_id],
+        )
+        for doc_id in plan.documents
+    ]

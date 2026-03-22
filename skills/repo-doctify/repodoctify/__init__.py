@@ -1,6 +1,5 @@
 from .analysis import RepositoryAnalysis, analyze_repository
 from .cli import main as cli_main
-from .composer import compose_docset
 from .feishu_handoff import (
     FeishuDependencyResult,
     FeishuExecutionMode,
@@ -15,9 +14,9 @@ from .feishu_handoff import (
     probe_feishu_auth_state,
 )
 from .feishu import FeishuProbeAdapter, delete_json, get_json, json_request, patch_json, post_json
-from .html_renderer import HtmlRenderResult, render_html_docset
-from .markdown_renderer import MarkdownRenderResult, render_markdown_docset
+from .manifest import build_docset_manifest_from_plan
 from .planning import build_default_docset_plan
+from .prompting import PromptBundle, build_prompt_bundle
 from .runtime import (
     COMMAND_FEISHU,
     COMMAND_HTML,
@@ -52,8 +51,7 @@ __all__ = [
     "delete_json",
     "get_json",
     "json_request",
-    "HtmlRenderResult",
-    "MarkdownRenderResult",
+    "PromptBundle",
     "patch_json",
     "post_json",
     "RepoDoctifyRequest",
@@ -65,16 +63,15 @@ __all__ = [
     "analyze_repository",
     "build_feishu_publish_plan",
     "build_feishu_verification_summary",
+    "build_docset_manifest_from_plan",
     "build_default_docset_plan",
+    "build_prompt_bundle",
     "choose_feishu_update_strategy",
     "cli_main",
-    "compose_docset",
     "ensure_external_workspace",
     "ensure_feishu_dependencies",
     "find_latest_workspace",
     "probe_feishu_auth_state",
-    "render_html_docset",
-    "render_markdown_docset",
     "resolve_repo_decision",
     "resolve_target_repo",
     "resolve_workspace_root",

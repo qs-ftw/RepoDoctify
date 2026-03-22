@@ -29,6 +29,51 @@ The recommended explicit invocations are:
 - `$repo-doctify html`
 - `$repo-doctify feishu`
 
+## Execution Workflow
+
+When this skill is triggered, use the bundled runtime script to prepare the
+analysis, plan, manifest, and prompt bundle first. Then use those files to
+author the actual doc content yourself.
+
+Do not invoke `brainstorming` for normal RepoDoctify runs. Repository docset
+generation is an execution task against an explicit prompt bundle, not an
+open-ended product-design exercise.
+
+Use:
+
+- `scripts/run_repodoctify.py --repo <target-repo>` for the default Markdown path
+- `scripts/run_repodoctify.py plan --repo <target-repo>` for plan only
+- `scripts/run_repodoctify.py html --repo <target-repo> --reuse-latest` for HTML
+- `scripts/run_repodoctify.py feishu --repo <target-repo> --installed-tool lark-mcp` for Feishu
+
+Operational rules:
+
+- Resolve the script path relative to this skill directory.
+- Prefer reusing the generated workspace for follow-up authoring instead of
+  re-reading the repository.
+- After the script finishes, inspect:
+  - `ir/repository-analysis.json`
+  - `plan/docset-plan.json`
+  - `artifacts/manifest.json`
+  - `prompt/packet.json`
+  - `prompt/authoring-brief.md`
+  - `prompt/write-targets.json`
+  - `prompt/document-prompts.json`
+  - `prompt/<mode>-output-contract.json`
+- Treat `prompt/packet.json` as the source of truth for reading budget and
+  priority paths.
+- The Python runtime must not author document prose, explanations, summaries,
+  or section bodies for the final docset.
+- The final Markdown / HTML / Feishu content must be authored by the model from
+  repository evidence, plan, and references.
+- Once the evidence is sufficient, stop exploring and start writing the output.
+- Write files one at a time in the order described by `prompt/write-targets.json`.
+- Use `prompt/document-prompts.json` as the single current document task list.
+- After each file write, verify the file exists before moving to the next one.
+- Do not glob-read every source file. Follow the reading budget first.
+- For Markdown mode, you must complete all targets in a single run.
+- Do not stop after writing only homepage.
+
 Only ask follow-up questions when the target repository or critical context is
 actually unclear. Keep the default behavior low-interruption.
 
@@ -79,11 +124,41 @@ equivalent:
 - `以 html 形式输出全部内容` -> `html`
 - `以飞书形式输出全部内容` -> `feishu`
 
-All output modes should share the same intermediate result.
+All output modes should share the same intermediate analysis and plan. The
+runtime prepares the prompt bundle; the model generates the final content.
 
 The bundled Python package and CLI are implementation helpers for the skill
 repository itself. They are useful for local verification and internal tooling,
 but they are not the primary user-facing invocation path.
+
+## Authoring Discipline
+
+After runtime preparation, do not stay in open-ended exploration mode.
+
+Follow this sequence:
+
+1. read `prompt/authoring-brief.md`
+2. read `prompt/write-targets.json`
+3. read `prompt/document-prompts.json`
+4. read `prompt/<mode>-output-contract.json`
+5. sample only the highest-priority missing evidence, not the whole repo
+6. pick one single current document task
+7. write that file
+8. verify the file exists
+9. move to the next document task
+
+This is a one-shot generation flow. Do not treat `homepage.md` as a checkpoint
+where you can stop. Continue until every Markdown target declared by
+`prompt/write-targets.json` exists.
+
+For Markdown mode, prefer a single multi-file `apply_patch` that creates every
+missing Markdown document plus `README.md` in one pass, then run the bulk file
+existence check declared in `prompt/write-targets.json`. This reduces the risk
+of stopping after the first document.
+
+Do not keep exploring once the evidence is sufficient. The common failure mode
+here is spending too long planning a multi-file write and never actually
+creating the files.
 
 Treat the runtime's repo resolution rules as the source of truth for skill
 execution:
@@ -137,10 +212,11 @@ Load these references as needed:
 
 - repository-docset methodology
 - shared IR semantics
-- Markdown and HTML rendering rules
+- Markdown and HTML authoring rules
 - README aggregation rules
 - Feishu publishing rules
 - Feishu update and verification strategy
 - Feishu runtime models for plan-only, dry-run, and execute semantics
 - Feishu target-document planning for request-specified existing docs
 - Feishu helper scripts that make the skill portable
+- prompt-bundle design for model-authored outputs

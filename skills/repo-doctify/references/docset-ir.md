@@ -1,21 +1,22 @@
 # Docset IR
 
-`RepoDoctify` uses a renderer-neutral intermediate representation called
-`Docset IR`.
+`RepoDoctify` uses a prompt-friendly intermediate representation centered on
+repository analysis, docset planning, and output contracts.
 
 ## Goals
 
-The IR exists so Markdown, HTML, and Feishu outputs can share the same
-repository knowledge content.
+The intermediate layer exists so Markdown, HTML, and Feishu generation can
+share the same repository evidence, planning decisions, and output contracts.
 
-The IR should capture:
+The intermediate layer should capture:
 
 - repository profile
 - code-anchor chains
-- document structure
-- section structure
-- renderer-neutral links
-- README aggregation relationships
+- document inventory
+- document roles and titles
+- reading routes
+- output contracts
+- manifest relationships
 
 ## Dataclasses
 
@@ -51,58 +52,28 @@ Stores docset-wide planning semantics:
 - reading routes
 - README aggregation strategy
 
-### `DocumentSpec`
+### Prompt Bundle
 
-Stores one document's identity and purpose:
+Stores the model-facing authoring contract:
 
-- `doc_id`
-- `title`
-- `role`
-- `question_answered`
-- `target_reader`
-- `sections`
-- `next_reads`
-
-### `SectionNode`
-
-Stores one renderer-neutral content block:
-
-- `kind`
-- `title`
-- `body`
-- `metadata`
-
-Supported v1 kinds include:
-
-- `paragraph`
-- `numbered_list`
-- `comparison_table`
-- `code_anchor`
-- `mermaid`
-- `callout`
-- `summary`
-
-### `CrossLinkMap`
-
-Stores renderer-neutral cross-document links:
-
-- homepage links
-- next-read links
-- reading-route links
-- aggregate README links
-
-## README Aggregation
-
-README aggregation is not a separate content source. It is a view derived from
-the same IR used by the other renderers.
+- mode
+- required input file paths
+- reference documents to load
+- expected outputs
+- authoring rules
+- non-goals
+- manifest snapshot
 
 ## Current Runtime Serialization
 
-The current runtime writes a single `docset-ir.json` file containing:
+The current runtime writes:
 
-- `repository_profile`
-- `docset_plan`
-- `documents`
+- `ir/repository-analysis.json`
+- `plan/docset-plan.json`
+- `artifacts/manifest.json`
+- `prompt/packet.json`
+- `prompt/<mode>-output-contract.json`
+- `prompt/authoring-brief.md`
 
 The runtime-facing request/response boundary also keeps repo-resolution
 semantics explicit:
@@ -110,5 +81,5 @@ semantics explicit:
 - request object carries current repo context, requested repo, and execution mode
 - run result carries resolved repo path and resolution reason
 
-That file is renderer-neutral and is meant to be reusable across Markdown,
-HTML, and Feishu output paths.
+These files are reusable across Markdown, HTML, and Feishu generation paths.
+The final prose is authored by the model, not synthesized by Python helpers.

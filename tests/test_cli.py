@@ -19,7 +19,7 @@ def test_cli_defaults_to_markdown_output(tmp_path):
     workspace = find_latest_workspace(repo)
     assert exit_code == 0
     assert workspace is not None
-    assert (workspace / "md" / "README.md").exists()
+    assert (workspace / "prompt" / "md-output-contract.json").exists()
 
 
 def test_cli_supports_html_alias_and_workspace_reuse(tmp_path):
@@ -32,5 +32,5 @@ def test_cli_supports_html_alias_and_workspace_reuse(tmp_path):
     assert first_exit_code == 0
     assert second_exit_code == 0
     assert workspace is not None
-    assert (workspace / "md" / "README.md").exists()
-    assert (workspace / "html" / "index.html").exists()
+    assert (workspace / "prompt" / "md-output-contract.json").exists()
+    assert (workspace / "prompt" / "html-output-contract.json").exists()
