@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from .analysis import RepositoryAnalysis
-from .models import DocumentSpec, DocsetPlan, SectionNode
+from .models import CodeAnchorChain, DocumentSpec, DocsetPlan, SectionNode
 
 
 def compose_docset(analysis: RepositoryAnalysis, plan: DocsetPlan) -> list[DocumentSpec]:
@@ -196,6 +196,7 @@ def _compose_bridge_topics(analysis: RepositoryAnalysis) -> DocumentSpec:
             body=[
                 "These topics usually cut across directories or ownership boundaries.",
                 "They often connect workspace layout, package scripts, source entrypoints, and test evidence rather than living in a single file.",
+                _bridge_anchor_summary(analysis),
                 "If the generated docset later grows deeper, these are strong candidates for standalone deep-dive docs.",
             ],
         ),
@@ -262,6 +263,7 @@ def _compose_evidence_guide(analysis: RepositoryAnalysis) -> DocumentSpec:
             body=[
                 "Prefer tests over comments when they disagree.",
                 "Prefer top-level configs over ad-hoc script assumptions when runtime behavior is unclear.",
+                _evidence_anchor_summary(analysis),
             ],
         ),
     ]
@@ -291,10 +293,7 @@ def _compose_development_guide(analysis: RepositoryAnalysis) -> DocumentSpec:
         SectionNode(
             kind="numbered_list",
             title="Change Chains To Follow",
-            body=[
-                chain.replace("Follow", "Use")
-                for chain in analysis.code_anchor_chains[:3]
-            ]
+            body=_development_anchor_lines(analysis)
             or ["Use the main entrypoint, its nearest implementation file, and the closest test as the first change boundary."],
         ),
         SectionNode(
@@ -309,6 +308,7 @@ def _compose_development_guide(analysis: RepositoryAnalysis) -> DocumentSpec:
                 ),
                 "If you cannot explain which doc in this set should change alongside code, the code change probably needs more analysis first.",
                 "A safe first implementation usually starts at the smallest ownership surface that can satisfy the change without widening the boundary.",
+                "For debugging, start from the failing entrypoint or test anchor before widening the search into helpers.",
             ],
         ),
     ]
@@ -405,3 +405,46 @@ def _bridge_topic_lines(analysis: RepositoryAnalysis) -> list[str]:
     if not topics:
         topics.append("Configuration and directory ownership are the two most likely bridge topics in this repository.")
     return topics
+
+
+def _development_anchor_lines(analysis: RepositoryAnalysis) -> list[str]:
+    lines: list[str] = []
+    for chain in analysis.code_anchor_details[:3]:
+        lines.append(_development_line_for_chain(chain))
+    return lines
+
+
+def _development_line_for_chain(chain: CodeAnchorChain) -> str:
+    if chain.chain_kind == "workspace_shared":
+        return (
+            f"If the change touches shared logic, start from `{chain.implementation_anchor or chain.entry_anchor}`, "
+            f"then confirm the change boundary with `{chain.test_anchor or chain.entry_anchor}`."
+        )
+    if chain.chain_kind == "workspace_app":
+        return (
+            f"If the bug shows up at app startup, debug from `{chain.entry_anchor}` first, then verify with "
+            f"`{chain.test_anchor or chain.entry_anchor}` before widening the change boundary."
+        )
+    if chain.implementation_anchor and chain.test_anchor:
+        return (
+            f"For behavior changes, use `{chain.entry_anchor}` -> `{chain.implementation_anchor}` -> `{chain.test_anchor}` "
+            "as the primary change boundary."
+        )
+    if chain.test_anchor:
+        return (
+            f"For debugging, start from `{chain.entry_anchor}` and confirm the behavior with `{chain.test_anchor}` "
+            "before editing adjacent modules."
+        )
+    return f"Use `{chain.entry_anchor}` as the first anchor before widening the change boundary."
+
+
+def _bridge_anchor_summary(analysis: RepositoryAnalysis) -> str:
+    if any(chain.chain_kind == "workspace_shared" for chain in analysis.code_anchor_details):
+        return "In workspace repos, the app entrypoint and shared package path should be treated as separate ownership surfaces."
+    return "The strongest bridge topics usually sit between the main entrypoint, its implementation handoff, and the nearest test."
+
+
+def _evidence_anchor_summary(analysis: RepositoryAnalysis) -> str:
+    if analysis.code_anchor_details:
+        return "When code anchors exist, treat the linked test anchor or regression anchor as the highest-priority evidence surface."
+    return "When no code anchors are available, use tests and config files as the best available evidence surfaces."

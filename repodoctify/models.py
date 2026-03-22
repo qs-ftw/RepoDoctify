@@ -14,6 +14,17 @@ class RepositoryProfile:
 
 
 @dataclass(slots=True)
+class CodeAnchorChain:
+    label: str
+    chain_kind: str
+    entry_anchor: str
+    implementation_anchor: str | None = None
+    test_anchor: str | None = None
+    config_anchor: str | None = None
+    contract_anchor: str | None = None
+
+
+@dataclass(slots=True)
 class SectionNode:
     kind: str
     title: str = ""

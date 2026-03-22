@@ -71,6 +71,8 @@ execution:
 - prefer the explicit repo when the user clearly provided one
 - allow strict conflict checks to stop early when the current repo context and
   requested repo disagree
+- keep the skill-facing runtime request model as the internal orchestration
+  boundary instead of growing new public CLI semantics
 
 ## Output Isolation Rule
 

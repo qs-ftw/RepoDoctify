@@ -31,7 +31,23 @@ class RepoDoctifyRunResult:
     plan_path: Path
     ir_path: Path | None
     written_files: list[Path]
+    resolved_repo_path: Path
+    repo_resolution_reason: str
     handoff_payload: dict | None = None
+
+
+@dataclass(slots=True)
+class RepoDoctifyRequest:
+    requested_repo: str | Path
+    current_dir: str | Path | None = None
+    command: str | None = None
+    workspace_root: str | Path | None = None
+    public_locator: str | None = None
+    installed_tools: set[str] | None = None
+    run_id: str | None = None
+    reuse_latest: bool = False
+    strict_conflict_check: bool = False
+    reading_goal: str | None = None
 
 
 def resolve_repo_decision(
@@ -57,14 +73,29 @@ def run_repodoctify(
     current_dir: str | Path | None = None,
     strict_conflict_check: bool = False,
 ) -> RepoDoctifyRunResult:
-    resolved_command = command or COMMAND_RENDER_MD
+    request = RepoDoctifyRequest(
+        requested_repo=repo_path,
+        current_dir=current_dir,
+        command=command,
+        workspace_root=workspace_root,
+        public_locator=public_locator,
+        installed_tools=installed_tools,
+        run_id=run_id,
+        reuse_latest=reuse_latest,
+        strict_conflict_check=strict_conflict_check,
+    )
+    return run_repodoctify_request(request)
+
+
+def run_repodoctify_request(request: RepoDoctifyRequest) -> RepoDoctifyRunResult:
+    resolved_command = request.command or COMMAND_RENDER_MD
     if resolved_command not in SUPPORTED_COMMANDS:
         raise ValueError(f"Unsupported RepoDoctify command: {resolved_command}")
 
     decision = resolve_repo_decision(
-        current_dir=current_dir or Path.cwd(),
-        requested_repo=repo_path,
-        strict_conflict_check=strict_conflict_check,
+        current_dir=request.current_dir or Path.cwd(),
+        requested_repo=request.requested_repo,
+        strict_conflict_check=request.strict_conflict_check,
     )
     if decision.should_ask:
         raise ValueError(decision.question)
@@ -72,9 +103,9 @@ def run_repodoctify(
     repo = decision.repo_path
     workspace = _resolve_workspace(
         repo,
-        workspace_root=workspace_root,
-        run_id=run_id,
-        reuse_latest=reuse_latest,
+        workspace_root=request.workspace_root,
+        run_id=request.run_id,
+        reuse_latest=request.reuse_latest,
     )
     analysis = None
     plan = None
@@ -88,7 +119,7 @@ def run_repodoctify(
         written_files.append(plan_path)
 
     if resolved_command == COMMAND_PLAN:
-        analysis = analyze_repository(repo, public_locator=public_locator)
+        analysis = analyze_repository(repo, public_locator=request.public_locator)
         plan = build_default_docset_plan(analysis)
         _write_plan(plan_path, analysis.profile, plan)
         if plan_path not in written_files:
@@ -99,13 +130,15 @@ def run_repodoctify(
             plan_path=plan_path,
             ir_path=None,
             written_files=written_files,
+            resolved_repo_path=repo,
+            repo_resolution_reason=decision.reason,
         )
 
     profile: RepositoryProfile
-    if reuse_latest and plan_path.exists() and ir_path.exists():
+    if request.reuse_latest and plan_path.exists() and ir_path.exists():
         profile, plan, docs = _load_ir_bundle(ir_path)
     else:
-        analysis = analyze_repository(repo, public_locator=public_locator)
+        analysis = analyze_repository(repo, public_locator=request.public_locator)
         plan = build_default_docset_plan(analysis)
         docs = compose_docset(analysis, plan)
         profile = analysis.profile
@@ -132,6 +165,8 @@ def run_repodoctify(
             plan_path=plan_path,
             ir_path=ir_path,
             written_files=written_files,
+            resolved_repo_path=repo,
+            repo_resolution_reason=decision.reason,
         )
 
     if resolved_command == COMMAND_HTML:
@@ -143,9 +178,11 @@ def run_repodoctify(
             plan_path=plan_path,
             ir_path=ir_path,
             written_files=written_files,
+            resolved_repo_path=repo,
+            repo_resolution_reason=decision.reason,
         )
 
-    dependency_result = ensure_feishu_dependencies(installed_tools=installed_tools)
+    dependency_result = ensure_feishu_dependencies(installed_tools=request.installed_tools)
     if not dependency_result.ok:
         raise RuntimeError(dependency_result.message)
 
@@ -161,6 +198,8 @@ def run_repodoctify(
         plan_path=plan_path,
         ir_path=ir_path,
         written_files=written_files,
+        resolved_repo_path=repo,
+        repo_resolution_reason=decision.reason,
         handoff_payload=handoff_payload,
     )
 

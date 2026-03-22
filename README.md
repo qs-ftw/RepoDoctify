@@ -59,7 +59,8 @@ The current v1 helper flow is:
 3. compose a shared IR
 4. render Markdown or HTML, or prepare a Feishu handoff
 
-The main Python entrypoint is `repodoctify.run_repodoctify(...)`.
+The main Python compatibility entrypoint is `repodoctify.run_repodoctify(...)`.
+The skill-facing runtime entrypoint is `repodoctify.run_repodoctify_request(...)`.
 
 The bundled CLI entrypoints are:
 
@@ -92,6 +93,7 @@ Target repository selection stays low-interruption by default:
 - if `--repo` is omitted, the current working directory is treated as the target
 - if an explicit repo path is passed, that path wins
 - the shared runtime also supports a strict conflict check so skill orchestration can stop early when the requested repo conflicts with the current repo context
+- runtime results also record the resolved repo path and the resolution reason so skill orchestration can inspect what happened
 
 ## Local Development
 

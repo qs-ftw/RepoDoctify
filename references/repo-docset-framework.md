@@ -16,6 +16,18 @@ Good repository docsets answer, in order:
 5. where the real boundaries are
 6. how to safely change it
 
+When possible, make the main-chain and development layers concrete with code
+anchors instead of only file inventories.
+
+Good code-anchor chains usually name:
+
+1. the contract anchor
+2. the runtime or package entrypoint
+3. the implementation handoff
+4. the nearest test or regression anchor
+
+If confidence is low, shorten the chain rather than inventing extra layers.
+
 ## Seven Layers
 
 Use this as the default skeleton:

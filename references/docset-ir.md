@@ -11,6 +11,7 @@ repository knowledge content.
 The IR should capture:
 
 - repository profile
+- code-anchor chains
 - document structure
 - section structure
 - renderer-neutral links
@@ -27,6 +28,18 @@ Stores repository-wide metadata:
 - `public_locator`
 - `primary_audience`
 - `source_authority_notes`
+
+### `CodeAnchorChain`
+
+Stores one structured reading or change path:
+
+- `label`
+- `chain_kind`
+- `entry_anchor`
+- `implementation_anchor`
+- `test_anchor`
+- `config_anchor`
+- `contract_anchor`
 
 ### `DocsetPlan`
 
@@ -90,6 +103,12 @@ The current runtime writes a single `docset-ir.json` file containing:
 - `repository_profile`
 - `docset_plan`
 - `documents`
+
+The runtime-facing request/response boundary also keeps repo-resolution
+semantics explicit:
+
+- request object carries current repo context, requested repo, and execution mode
+- run result carries resolved repo path and resolution reason
 
 That file is renderer-neutral and is meant to be reusable across Markdown,
 HTML, and Feishu output paths.

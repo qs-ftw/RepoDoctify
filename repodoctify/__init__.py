@@ -10,12 +10,14 @@ from .runtime import (
     COMMAND_HTML,
     COMMAND_PLAN,
     COMMAND_RENDER_MD,
+    RepoDoctifyRequest,
     RepoDoctifyRunResult,
     resolve_repo_decision,
     run_repodoctify,
+    run_repodoctify_request,
 )
 from .targeting import TargetRepoDecision, resolve_target_repo
-from .models import CrossLinkMap, DocumentSpec, DocsetPlan, RepositoryProfile, SectionNode
+from .models import CodeAnchorChain, CrossLinkMap, DocumentSpec, DocsetPlan, RepositoryProfile, SectionNode
 from .workspace import ensure_external_workspace, find_latest_workspace, resolve_workspace_root
 
 __all__ = [
@@ -23,12 +25,14 @@ __all__ = [
     "COMMAND_HTML",
     "COMMAND_PLAN",
     "COMMAND_RENDER_MD",
+    "CodeAnchorChain",
     "CrossLinkMap",
     "DocumentSpec",
     "DocsetPlan",
     "FeishuDependencyResult",
     "HtmlRenderResult",
     "MarkdownRenderResult",
+    "RepoDoctifyRequest",
     "RepoDoctifyRunResult",
     "RepositoryAnalysis",
     "RepositoryProfile",
@@ -48,4 +52,5 @@ __all__ = [
     "resolve_target_repo",
     "resolve_workspace_root",
     "run_repodoctify",
+    "run_repodoctify_request",
 ]

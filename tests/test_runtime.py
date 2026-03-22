@@ -8,8 +8,10 @@ from repodoctify.runtime import (
     COMMAND_HTML,
     COMMAND_PLAN,
     COMMAND_RENDER_MD,
+    RepoDoctifyRequest,
     resolve_repo_decision,
     run_repodoctify,
+    run_repodoctify_request,
 )
 
 
@@ -40,6 +42,8 @@ def test_default_run_writes_markdown_outputs_to_external_workspace(tmp_path):
     manifest = json.loads((result.workspace / "md" / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["repo_label"] == "sample-repo"
     assert manifest["documents"]
+    assert result.resolved_repo_path == repo.resolve()
+    assert result.repo_resolution_reason == "explicit_repo"
 
 
 def test_plan_command_stops_before_rendering_outputs(tmp_path):
@@ -144,3 +148,21 @@ def test_runtime_rejects_conflicting_repo_execution_in_strict_mode(tmp_path):
             strict_conflict_check=True,
             run_id="strict-conflict",
         )
+
+
+def test_run_repodoctify_request_supports_skill_facing_execution(tmp_path):
+    repo = _make_repo(tmp_path)
+
+    request = RepoDoctifyRequest(
+        requested_repo=repo,
+        current_dir=tmp_path,
+        command=COMMAND_RENDER_MD,
+        run_id="request-default",
+    )
+
+    result = run_repodoctify_request(request)
+
+    assert result.command == COMMAND_RENDER_MD
+    assert result.resolved_repo_path == repo.resolve()
+    assert result.repo_resolution_reason == "explicit_repo"
+    assert (result.workspace / "md" / "README.md").exists()

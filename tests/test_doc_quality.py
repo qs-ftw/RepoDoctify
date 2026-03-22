@@ -63,6 +63,7 @@ def test_typescript_workspace_repo_gets_bridge_and_debug_guidance(tmp_path):
     assert "package scripts" in bridge_text.lower() or "source entrypoints" in bridge_text.lower()
     assert "tests" in dev_text.lower()
     assert "entrypoint" in dev_text.lower()
+    assert "shared" in dev_text.lower() or "package" in dev_text.lower()
 
 
 def test_python_docs_include_concrete_chain_guidance(tmp_path):
@@ -87,3 +88,28 @@ def test_python_docs_include_concrete_chain_guidance(tmp_path):
     assert "src/python_chain_docs/cli.py" in code_text
     assert "tests/test_cli.py" in code_text
     assert "follow this chain" in code_text.lower() or "follow `" in code_text.lower()
+
+
+def test_development_guide_includes_debug_and_change_boundary_guidance(tmp_path):
+    repo = tmp_path / "python-debug-guidance"
+    repo.mkdir()
+    (repo / "README.md").write_text("# Python Debug Guidance\n", encoding="utf-8")
+    (repo / "pyproject.toml").write_text("[project]\nname='python-debug-guidance'\n", encoding="utf-8")
+    (repo / "src").mkdir()
+    (repo / "src" / "python_debug_guidance").mkdir()
+    (repo / "src" / "python_debug_guidance" / "cli.py").write_text("def main():\n    return 0\n", encoding="utf-8")
+    (repo / "src" / "python_debug_guidance" / "service.py").write_text("def run():\n    return 'ok'\n", encoding="utf-8")
+    (repo / "tests").mkdir()
+    (repo / "tests" / "test_service.py").write_text("def test_service():\n    assert True\n", encoding="utf-8")
+
+    analysis = analyze_repository(repo)
+    docs = compose_docset(analysis, build_default_docset_plan(analysis))
+    dev_guide = next(doc for doc in docs if doc.doc_id == "development-guide")
+    evidence = next(doc for doc in docs if doc.doc_id == "evidence-guide")
+
+    dev_text = "\n".join(item for section in dev_guide.sections for item in section.body)
+    evidence_text = "\n".join(item for section in evidence.sections for item in section.body)
+
+    assert "debug" in dev_text.lower()
+    assert "change boundary" in dev_text.lower()
+    assert "test anchor" in evidence_text.lower() or "regression anchor" in evidence_text.lower()

@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 import json
 from pathlib import Path
 
-from .models import RepositoryProfile
+from .models import CodeAnchorChain, RepositoryProfile
 
 
 CONFIG_FILE_NAMES = (
@@ -39,6 +39,7 @@ class RepositoryAnalysis:
     config_files: list[str] = field(default_factory=list)
     tooling_signals: dict[str, str] = field(default_factory=dict)
     evidence_strength: dict[str, str] = field(default_factory=dict)
+    code_anchor_details: list[CodeAnchorChain] = field(default_factory=list)
     code_anchor_chains: list[str] = field(default_factory=list)
 
 
@@ -75,14 +76,16 @@ def analyze_repository(
         primary_language,
     )
     evidence_strength = _build_evidence_strength(readme_files, test_entries, docs_entries, config_files)
-    code_anchor_chains = _build_code_anchor_chains(
+    code_anchor_details = _build_code_anchor_details(
         readme_files=readme_files,
         entrypoint_candidates=entrypoint_candidates,
         source_layout=source_layout,
         test_layout=test_layout,
         config_files=config_files,
         tooling_signals=tooling_signals,
+        primary_language=primary_language,
     )
+    code_anchor_chains = [_render_code_anchor_chain(chain) for chain in code_anchor_details]
 
     profile = RepositoryProfile(
         repo_label=repo.name,
@@ -108,6 +111,7 @@ def analyze_repository(
         config_files=config_files,
         tooling_signals=tooling_signals,
         evidence_strength=evidence_strength,
+        code_anchor_details=code_anchor_details,
         code_anchor_chains=code_anchor_chains,
     )
 
@@ -332,54 +336,159 @@ def _build_authority_notes(
     return notes
 
 
-def _build_code_anchor_chains(
+def _build_code_anchor_details(
     readme_files: list[str],
     entrypoint_candidates: list[str],
     source_layout: list[str],
     test_layout: list[str],
     config_files: list[str],
     tooling_signals: dict[str, str],
-) -> list[str]:
-    chains: list[str] = []
-    if readme_files and entrypoint_candidates:
-        chains.append(
-            f"Follow `{readme_files[0]}` -> `{entrypoint_candidates[0]}` first to map the human-facing contract to the real entrypoint."
-        )
-
-    source_anchor = _choose_source_anchor(entrypoint_candidates, source_layout)
-    test_anchor = test_layout[0] if test_layout else None
-    config_anchor = config_files[0] if config_files else None
-
-    if source_anchor is not None and test_anchor is not None:
-        chains.append(
-            f"Follow `{source_anchor}` -> `{test_anchor}` to confirm the primary behavior path and its regression anchor."
-        )
-    elif source_anchor is not None:
-        chains.append(
-            f"Follow `{source_anchor}` as the main implementation anchor before widening into helper modules."
-        )
+    primary_language: str,
+) -> list[CodeAnchorChain]:
+    contract_anchor = readme_files[0] if readme_files else None
+    config_anchor = _choose_config_anchor(config_files, primary_language)
+    details: list[CodeAnchorChain] = []
 
     if tooling_signals.get("workspace_layout") == "monorepo":
-        workspace_source = next(
-            (path for path in source_layout if path.startswith(("apps/", "packages/"))),
-            None,
-        )
-        if workspace_source is not None:
-            chains.append(
-                f"Follow `package.json` -> `{workspace_source}` to understand how workspace scripts hand control to package-level source entrypoints."
+        app_entry = _first_matching(entrypoint_candidates, prefixes=("apps/",), suffixes=("main.ts", "index.ts", "app.ts", "main.js", "index.js"))
+        app_test = _match_related_test(app_entry, test_layout)
+        if app_entry is not None:
+            details.append(
+                CodeAnchorChain(
+                    label="App startup path",
+                    chain_kind="workspace_app",
+                    contract_anchor=contract_anchor,
+                    entry_anchor=app_entry,
+                    test_anchor=app_test,
+                    config_anchor=config_anchor,
+                )
             )
 
-    if source_anchor is not None and config_anchor is not None:
-        chains.append(
-            f"Use `{config_anchor}` after `{source_anchor}` when you need the runtime or packaging boundary for a change."
+        shared_entry = _first_matching(source_layout, prefixes=("packages/",), suffixes=("index.ts", "index.js", "service.ts", "service.js"))
+        if shared_entry is not None:
+            details.append(
+                CodeAnchorChain(
+                    label="Shared package path",
+                    chain_kind="workspace_shared",
+                    contract_anchor=contract_anchor,
+                    entry_anchor="package.json" if "package_manager" in tooling_signals else shared_entry,
+                    implementation_anchor=shared_entry,
+                    test_anchor=_match_related_test(shared_entry, test_layout) or (test_layout[0] if test_layout else None),
+                    config_anchor=config_anchor,
+                )
+            )
+        return details[:4]
+
+    entry_anchor = _choose_entry_anchor(entrypoint_candidates, primary_language)
+    implementation_anchor = _choose_implementation_anchor(source_layout, entry_anchor, primary_language)
+    test_anchor = _match_related_test(implementation_anchor or entry_anchor, test_layout)
+    if test_anchor is None and test_layout:
+        test_anchor = test_layout[0]
+    if entry_anchor is not None:
+        details.append(
+            CodeAnchorChain(
+                label="Primary behavior path",
+                chain_kind="primary_behavior",
+                contract_anchor=contract_anchor,
+                entry_anchor=entry_anchor,
+                implementation_anchor=implementation_anchor,
+                test_anchor=test_anchor,
+                config_anchor=config_anchor,
+            )
         )
-    return chains[:4]
+    return details[:4]
 
 
-def _choose_source_anchor(entrypoint_candidates: list[str], source_layout: list[str]) -> str | None:
-    for candidate in entrypoint_candidates:
-        if candidate.startswith(("src/", "apps/", "packages/")):
+def _render_code_anchor_chain(chain: CodeAnchorChain) -> str:
+    segments = [f"`{chain.entry_anchor}`"]
+    if chain.implementation_anchor:
+        segments.append(f"`{chain.implementation_anchor}`")
+    if chain.test_anchor:
+        segments.append(f"`{chain.test_anchor}`")
+    joined = " -> ".join(segments)
+
+    if chain.contract_anchor:
+        return (
+            f"Follow this chain for {chain.label.lower()}: `{chain.contract_anchor}` -> {joined}. "
+            "Use it to understand the contract, the handoff into implementation, and the regression anchor."
+        )
+    return (
+        f"Follow this chain for {chain.label.lower()}: {joined}. "
+        "Use it to understand the entrypoint, the implementation handoff, and the regression anchor."
+    )
+
+
+def _choose_entry_anchor(entrypoint_candidates: list[str], primary_language: str) -> str | None:
+    preferred_suffixes = {
+        "python": ("cli.py", "__main__.py", "main.py", "app.py"),
+        "typescript": ("main.ts", "index.ts", "app.ts", "cli.ts"),
+        "javascript": ("main.js", "index.js", "app.js", "cli.js"),
+    }.get(primary_language, ("main.py", "main.ts", "main.js"))
+    for suffix in preferred_suffixes:
+        for candidate in entrypoint_candidates:
+            if candidate.endswith(suffix):
+                return candidate
+    return _first_matching(entrypoint_candidates, prefixes=("src/", "apps/", "packages/"))
+
+
+def _choose_implementation_anchor(
+    source_layout: list[str],
+    entry_anchor: str | None,
+    primary_language: str,
+) -> str | None:
+    if not source_layout:
+        return None
+    preferred_names = {
+        "python": ("service.py", "core.py", "runner.py", "pipeline.py"),
+        "typescript": ("service.ts", "core.ts", "runner.ts", "index.ts"),
+        "javascript": ("service.js", "core.js", "runner.js", "index.js"),
+    }.get(primary_language, ("service.py", "service.ts", "service.js"))
+    if entry_anchor is not None:
+        entry_parent = str(Path(entry_anchor).parent)
+        for name in preferred_names:
+            for path in source_layout:
+                if path.startswith(entry_parent + "/") and path.endswith(name) and path != entry_anchor:
+                    return path
+    for name in preferred_names:
+        for path in source_layout:
+            if path.endswith(name) and path != entry_anchor:
+                return path
+    return None
+
+
+def _match_related_test(anchor: str | None, test_layout: list[str]) -> str | None:
+    if anchor is None:
+        return None
+    anchor_name = Path(anchor).stem.replace("__main__", "main")
+    trimmed = anchor_name.replace("test_", "")
+    for test in test_layout:
+        test_name = Path(test).stem
+        if trimmed and trimmed in test_name:
+            return test
+    return None
+
+
+def _choose_config_anchor(config_files: list[str], primary_language: str) -> str | None:
+    preferred = {
+        "python": ("pyproject.toml", "setup.py", "requirements.txt"),
+        "typescript": ("package.json", "tsconfig.json"),
+        "javascript": ("package.json",),
+    }.get(primary_language, tuple(config_files))
+    for candidate in preferred:
+        if candidate in config_files:
             return candidate
-    if source_layout:
-        return source_layout[0]
+    return config_files[0] if config_files else None
+
+
+def _first_matching(
+    paths: list[str],
+    prefixes: tuple[str, ...] = (),
+    suffixes: tuple[str, ...] = (),
+) -> str | None:
+    for path in paths:
+        if prefixes and not path.startswith(prefixes):
+            continue
+        if suffixes and not path.endswith(suffixes):
+            continue
+        return path
     return None
