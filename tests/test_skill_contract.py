@@ -30,6 +30,7 @@ def test_repo_owns_reference_set():
         "references/bitable-and-permissions.md",
         "references/docset-ir.md",
         "references/feishu-operations.md",
+        "references/feishu-runtime-model.md",
         "references/markdown-rendering-rules.md",
         "references/html-rendering-rules.md",
         "references/feishu-rendering-handoff.md",
@@ -45,6 +46,11 @@ def test_local_install_helper_exists():
     assert Path("scripts/feishu_mermaid_postprocessor.py").exists()
     assert Path("scripts/lark_mcp_localhost_auth_server.py").exists()
     assert Path("scripts/lark_mcp_user_token_wrapper.py").exists()
+
+
+def test_feishu_script_wrapper_uses_repodoctify_library():
+    text = Path("scripts/publish_feishu_diagram_round1.py").read_text(encoding="utf-8")
+    assert "repodoctify.feishu" in text
 
 
 def test_install_helper_targets_skill_directory_name():

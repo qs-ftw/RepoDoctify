@@ -3,10 +3,16 @@ from .cli import main as cli_main
 from .composer import compose_docset
 from .feishu_handoff import (
     FeishuDependencyResult,
+    FeishuExecutionMode,
     FeishuPublishMode,
+    FeishuPublishTarget,
+    FeishuVerificationCheck,
+    FeishuVerificationPlan,
     build_feishu_publish_plan,
     build_feishu_verification_summary,
+    choose_feishu_update_strategy,
     ensure_feishu_dependencies,
+    probe_feishu_auth_state,
 )
 from .html_renderer import HtmlRenderResult, render_html_docset
 from .markdown_renderer import MarkdownRenderResult, render_markdown_docset
@@ -36,7 +42,11 @@ __all__ = [
     "DocumentSpec",
     "DocsetPlan",
     "FeishuDependencyResult",
+    "FeishuExecutionMode",
     "FeishuPublishMode",
+    "FeishuPublishTarget",
+    "FeishuVerificationCheck",
+    "FeishuVerificationPlan",
     "HtmlRenderResult",
     "MarkdownRenderResult",
     "RepoDoctifyRequest",
@@ -49,11 +59,13 @@ __all__ = [
     "build_feishu_publish_plan",
     "build_feishu_verification_summary",
     "build_default_docset_plan",
+    "choose_feishu_update_strategy",
     "cli_main",
     "compose_docset",
     "ensure_external_workspace",
     "ensure_feishu_dependencies",
     "find_latest_workspace",
+    "probe_feishu_auth_state",
     "render_html_docset",
     "render_markdown_docset",
     "resolve_repo_decision",

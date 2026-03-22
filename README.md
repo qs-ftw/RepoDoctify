@@ -149,3 +149,9 @@ of blocking Markdown or HTML output.
 RepoDoctify owns the Feishu publication plan, update strategy, verification
 rules, and bundled helper scripts. `lark-mcp` remains an external dependency
 for connectivity only.
+
+The Feishu runtime now distinguishes:
+
+- `plan_only` for publish planning
+- `dry_run` for execution-ready validation without remote writes
+- `execute` for the future remote-write path

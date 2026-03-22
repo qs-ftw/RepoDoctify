@@ -8,14 +8,13 @@ import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
+from repodoctify.feishu.mermaid import build_mermaid_chart_block, normalize_mermaid
 from feishu_mermaid_inspector import (
     extract_remote_mermaid_addons,
     fetch_document_blocks,
-    normalize_mermaid,
 )
 from feishu_mermaid_postprocessor import (
     build_child_index_lookup,
-    build_mermaid_chart_block,
     post_json,
 )
 from lark_mcp_user_token_wrapper import (

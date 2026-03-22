@@ -108,6 +108,7 @@ Load these references as needed:
 - `references/markdown-rendering-rules.md`
 - `references/html-rendering-rules.md`
 - `references/feishu-rendering-handoff.md`
+- `references/feishu-runtime-model.md`
 
 ## Ownership Boundary
 
@@ -119,4 +120,5 @@ Load these references as needed:
 - README aggregation rules
 - Feishu publishing rules
 - Feishu update and verification strategy
+- Feishu runtime models for plan-only, dry-run, and execute semantics
 - Feishu helper scripts that make the skill portable

@@ -7,9 +7,11 @@ from pathlib import Path
 from .analysis import analyze_repository
 from .composer import compose_docset
 from .feishu_handoff import (
+    FeishuExecutionMode,
     build_feishu_publish_plan,
     build_feishu_verification_summary,
     ensure_feishu_dependencies,
+    probe_feishu_auth_state,
 )
 from .html_renderer import render_html_docset
 from .manifest import build_docset_manifest
@@ -37,6 +39,8 @@ class RepoDoctifyRunResult:
     written_files: list[Path]
     resolved_repo_path: Path
     repo_resolution_reason: str
+    feishu_execution_mode: str | None = None
+    feishu_auth_state: dict | None = None
     feishu_publish_plan: dict | None = None
 
 
@@ -52,6 +56,7 @@ class RepoDoctifyRequest:
     reuse_latest: bool = False
     strict_conflict_check: bool = False
     reading_goal: str | None = None
+    feishu_mode: str | None = None
 
 
 def resolve_repo_decision(
@@ -190,14 +195,28 @@ def run_repodoctify_request(request: RepoDoctifyRequest) -> RepoDoctifyRunResult
     if not dependency_result.ok:
         raise RuntimeError(dependency_result.message)
 
+    feishu_mode = request.feishu_mode or FeishuExecutionMode.PLAN_ONLY.value
+    auth_state = probe_feishu_auth_state(
+        installed_tools=request.installed_tools,
+        require_user_access_token=feishu_mode == FeishuExecutionMode.EXECUTE.value,
+        user_token_present=feishu_mode != FeishuExecutionMode.PLAN_ONLY.value,
+        user_token_validated=feishu_mode == FeishuExecutionMode.EXECUTE.value,
+    )
     manifest_path = workspace / "publish" / "manifest.json"
     _write_json(manifest_path, build_docset_manifest(profile, docs))
-    publish_plan = build_feishu_publish_plan(profile, docs, manifest_path=manifest_path)
+    publish_plan = build_feishu_publish_plan(
+        profile,
+        docs,
+        manifest_path=manifest_path,
+        execution_mode=FeishuExecutionMode(feishu_mode),
+    )
     publish_plan_path = workspace / "publish" / "feishu-publish-plan.json"
     verification_path = workspace / "publish" / "verification-summary.json"
+    auth_state_path = workspace / "publish" / "auth-state.json"
     _write_json(publish_plan_path, publish_plan)
     _write_json(verification_path, build_feishu_verification_summary(publish_plan))
-    written_files.extend([manifest_path, publish_plan_path, verification_path])
+    _write_json(auth_state_path, auth_state.as_dict())
+    written_files.extend([manifest_path, publish_plan_path, verification_path, auth_state_path])
     return RepoDoctifyRunResult(
         command=resolved_command,
         workspace=workspace,
@@ -206,6 +225,8 @@ def run_repodoctify_request(request: RepoDoctifyRequest) -> RepoDoctifyRunResult
         written_files=written_files,
         resolved_repo_path=repo,
         repo_resolution_reason=decision.reason,
+        feishu_execution_mode=feishu_mode,
+        feishu_auth_state=auth_state.as_dict(),
         feishu_publish_plan=publish_plan,
     )
 

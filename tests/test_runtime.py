@@ -13,6 +13,7 @@ from repodoctify.runtime import (
     run_repodoctify,
     run_repodoctify_request,
 )
+from repodoctify.feishu_handoff import FeishuExecutionMode
 
 
 def _make_repo(tmp_path):
@@ -105,6 +106,8 @@ def test_feishu_command_writes_handoff_when_dependencies_present(tmp_path):
     assert payload["required_dependency"] == "lark-mcp"
     assert payload["document_titles"]
     assert (result.workspace / "publish" / "verification-summary.json").exists()
+    assert result.feishu_execution_mode == FeishuExecutionMode.PLAN_ONLY.value
+    assert result.feishu_auth_state["recommended_action"] == "ready_for_dry_run"
 
 
 def test_runtime_resolves_current_repo_by_default(tmp_path):
@@ -167,3 +170,23 @@ def test_run_repodoctify_request_supports_skill_facing_execution(tmp_path):
     assert result.resolved_repo_path == repo.resolve()
     assert result.repo_resolution_reason == "explicit_repo"
     assert (result.workspace / "md" / "README.md").exists()
+
+
+def test_run_repodoctify_request_supports_feishu_dry_run_mode(tmp_path):
+    repo = _make_repo(tmp_path)
+
+    request = RepoDoctifyRequest(
+        requested_repo=repo,
+        current_dir=tmp_path,
+        command=COMMAND_FEISHU,
+        installed_tools={"lark-mcp"},
+        run_id="feishu-dry-run",
+        feishu_mode=FeishuExecutionMode.DRY_RUN.value,
+    )
+
+    result = run_repodoctify_request(request)
+
+    assert result.command == COMMAND_FEISHU
+    assert result.feishu_execution_mode == FeishuExecutionMode.DRY_RUN.value
+    assert result.feishu_publish_plan is not None
+    assert result.feishu_auth_state["recommended_action"] == "ready_for_dry_run"
