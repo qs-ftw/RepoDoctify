@@ -11,6 +11,22 @@ optimizing for browser reading.
 - render code blocks safely
 - render tables and Mermaid blocks in readable fallback form
 
+### When to Use Diagrams
+
+Use Mermaid diagrams intentionally. Most technical learning docs should include 1-2 diagrams per document, not more.
+
+Choose diagram type by purpose:
+
+- homepage or study index: `mindmap`
+- request, trace, polling, callback, cross-repo flow: `sequenceDiagram`
+- main data or state relationships: `erDiagram`
+- service or class responsibility map: `classDiagram`
+- one clear local stage chain (e.g. build, init, shutdown, config flow): `flowchart`
+
+Do not add a diagram just because a topic exists. Only add one when it genuinely clarifies a relationship or sequence that would otherwise require reading several paragraphs to reconstruct.
+
+When a diagram would help, place it immediately after the heading that introduces the concept it illustrates, not at the end of the document.
+
 ## Index Page
 
 The index page should:

@@ -422,6 +422,8 @@ def _build_authoring_brief(
             "- For '先看哪些文件' or other ordered reading sections, use numbered lists instead of tables unless comparison is genuinely horizontal.",
             "- Mention uncertainty explicitly when the repository does not provide enough evidence.",
             "- When generating Markdown or HTML, preserve Mermaid blocks when they meaningfully clarify the structure.",
+            "- Actively add Mermaid diagrams where they clarify complex relationships: use `mindmap` for homepage/index, `sequenceDiagram` for call/request chains, `erDiagram` for data models, `classDiagram` for module responsibilities, `flowchart` for process stages. Most docs need only 1-2 diagrams — do not diagram for its own sake.",
+            "- Load `references/markdown-rendering-rules.md` for full Markdown diagram placement and type-selection guidance.",
             "- Write the output files one at a time in the order listed by `prompt/write-targets.json`.",
             "- Before writing each document, read its single current document task from `prompt/document-prompts.json` and answer only that document's question.",
             "- Do not keep exploring once the evidence is sufficient for the planned documents; switch to writing.",
@@ -433,9 +435,16 @@ def _build_authoring_brief(
     if command == COMMAND_RENDER_MD:
         lines.extend(
             [
+                "- Load `references/markdown-rendering-rules.md` for full Markdown rendering guidance.",
                 "- For Markdown mode, prefer a single multi-file `apply_patch` that creates every missing `.md` target and `README.md` in one pass.",
                 "- After the multi-file write, run one bulk existence check using the command declared in `prompt/write-targets.json`.",
                 "- Do not pause for commentary after `homepage.md`; continue until every declared Markdown target exists.",
+            ]
+        )
+    if command == COMMAND_HTML:
+        lines.extend(
+            [
+                "- Load `references/html-rendering-rules.md` for full HTML rendering guidance.",
             ]
         )
     if command == COMMAND_FEISHU:
