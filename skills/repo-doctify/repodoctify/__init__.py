@@ -1,5 +1,4 @@
 from .analysis import RepositoryAnalysis, analyze_repository
-from .cli import main as cli_main
 from .feishu_handoff import (
     FeishuDependencyResult,
     FeishuExecutionMode,
@@ -67,7 +66,6 @@ __all__ = [
     "build_default_docset_plan",
     "build_prompt_bundle",
     "choose_feishu_update_strategy",
-    "cli_main",
     "ensure_external_workspace",
     "ensure_feishu_dependencies",
     "find_latest_workspace",

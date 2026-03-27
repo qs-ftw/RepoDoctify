@@ -19,13 +19,17 @@ Included examples:
   - small Rust crate layout
   - includes `README.md`, `Cargo.toml`, `src/`, and `tests/`
 
-Recommended smoke checks:
+Recommended smoke checks (run via the Python runtime directly):
 
 ```bash
-python -m repodoctify --repo examples/python-basic --workspace-root /tmp/repodoctify-workspaces
-python -m repodoctify --repo examples/typescript-basic --workspace-root /tmp/repodoctify-workspaces
-python -m repodoctify --repo examples/go-basic --workspace-root /tmp/repodoctify-workspaces
-python -m repodoctify --repo examples/rust-basic --workspace-root /tmp/repodoctify-workspaces
+python -c "
+from repodoctify import run_repodoctify
+from pathlib import Path
+for name in ['python-basic', 'typescript-basic', 'go-basic', 'rust-basic']:
+    repo = Path(__file__).parent / name
+    result = run_repodoctify(repo, workspace_root=Path('/tmp/repodoctify-workspaces'))
+    print(result.workspace)
+"
 ```
 
 For Codex skill testing after installation:

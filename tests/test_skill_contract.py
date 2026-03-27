@@ -1,6 +1,5 @@
 from pathlib import Path
 import subprocess
-import sys
 
 SKILL_ROOT = Path("skills/repo-doctify")
 
@@ -58,7 +57,6 @@ def test_repo_owns_reference_set():
 def test_local_install_helper_exists():
     assert Path("scripts/install_local_skill.py").exists()
     assert Path("scripts/build_release_bundles.py").exists()
-    assert (SKILL_ROOT / "scripts/run_repodoctify.py").exists()
     assert (SKILL_ROOT / "scripts/publish_python_bridge_doc.py").exists()
     assert (SKILL_ROOT / "scripts/publish_feishu_diagram_round1.py").exists()
     assert (SKILL_ROOT / "scripts/feishu_mermaid_inspector.py").exists()
@@ -87,10 +85,6 @@ def test_install_helper_targets_skill_directory_name():
     assert '"codex": "Codex"' in text
     assert '"claude": "Claude Code"' in text
     assert '"trae": "Trae"' in text
-    assert "$repo-doctify plan" in text
-    assert "$repo-doctify md" in text
-    assert "$repo-doctify html" in text
-    assert "$repo-doctify feishu" in text
 
 
 def test_readme_describes_skill_first_usage():
@@ -107,7 +101,6 @@ def test_readme_describes_skill_first_usage():
     assert "--platform trae" in text
     assert "dist/release/claude/" in text
     assert "dist/release/trae/skills/repo-doctify/" in text
-    assert "Use the default form when you want the Markdown generation flow." in text
     assert "portable repository-docset skill source" in text
     assert "Python + TS/JS" in text
     assert "Go, Rust, and Java" in text
@@ -117,7 +110,7 @@ def test_readme_describes_skill_first_usage():
 
 def test_skill_declares_runtime_script_execution_path():
     text = (SKILL_ROOT / "SKILL.md").read_text(encoding="utf-8")
-    assert "scripts/run_repodoctify.py" in text
+    assert "run_repodoctify" in text
     assert "The Python runtime must not author document prose" in text
     assert "write-targets.json" in text
     assert "document-prompts.json" in text
@@ -131,34 +124,6 @@ def test_skill_declares_runtime_script_execution_path():
     assert "single multi-file `apply_patch`" in text
     assert "bulk file" in text
     assert "existence check" in text
-
-
-def test_runtime_script_can_generate_prompt_bundle(tmp_path):
-    repo = tmp_path / "sample-repo"
-    repo.mkdir()
-    (repo / "README.md").write_text("# Sample Repo\n", encoding="utf-8")
-    (repo / "pyproject.toml").write_text("[project]\nname='sample-repo'\n", encoding="utf-8")
-    (repo / "src").mkdir()
-    (repo / "src" / "app.py").write_text("def main():\n    return 'ok'\n", encoding="utf-8")
-    workspace_root = tmp_path / "workspace"
-
-    completed = subprocess.run(
-        [
-            sys.executable,
-            str(SKILL_ROOT / "scripts" / "run_repodoctify.py"),
-            "--repo",
-            str(repo),
-            "--workspace-root",
-            str(workspace_root),
-        ],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-
-    workspace = Path(completed.stdout.strip())
-    assert workspace.exists()
-    assert (workspace / "prompt" / "md-output-contract.json").exists()
 
 
 def test_feishu_ownership_reference_points_to_repodoctify():

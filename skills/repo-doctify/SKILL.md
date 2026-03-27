@@ -39,19 +39,25 @@ Do not invoke `brainstorming` for normal RepoDoctify runs. Repository docset
 generation is an execution task against an explicit prompt bundle, not an
 open-ended product-design exercise.
 
-Use:
-
-- `scripts/run_repodoctify.py --repo <target-repo>` for the default Markdown path
-- `scripts/run_repodoctify.py plan --repo <target-repo>` for plan only
-- `scripts/run_repodoctify.py html --repo <target-repo> --reuse-latest` for HTML
-- `scripts/run_repodoctify.py feishu --repo <target-repo> --installed-tool lark-mcp` for Feishu
-
 Operational rules:
 
-- Resolve the script path relative to this skill directory.
+- The system Python (3.9) does not support RepoDoctify's `slots=True` dataclasses.
+  Use `uv` to create a temporary Python 3.14 venv inside the skill directory, then
+  run the runtime from it:
+  ```
+  REPO=$(pwd) && cd ~/.codex/skills/repo-doctify && uv venv .venv --python 3.14 && uv run --no-project --python .venv/bin/python - << 'EOF'
+  import sys; sys.path.insert(0, '.')
+  from repodoctify.runtime import run_repodoctify, COMMAND_RENDER_MD
+  from pathlib import Path
+  result = run_repodoctify(Path('$REPO'), command=COMMAND_RENDER_MD)
+  print(result.workspace)
+  EOF
+  ```
+  Replace `$REPO` with the absolute path to the target repository. Use
+  `COMMAND_PLAN` for plan-only mode.
 - Prefer reusing the generated workspace for follow-up authoring instead of
   re-reading the repository.
-- After the script finishes, inspect:
+- After the runtime finishes, inspect:
   - `ir/repository-analysis.json`
   - `plan/docset-plan.json`
   - `artifacts/manifest.json`
@@ -127,9 +133,9 @@ equivalent:
 All output modes should share the same intermediate analysis and plan. The
 runtime prepares the prompt bundle; the model generates the final content.
 
-The bundled Python package and CLI are implementation helpers for the skill
-repository itself. They are useful for local verification and internal tooling,
-but they are not the primary user-facing invocation path.
+The bundled Python package is an implementation helper for the skill repository itself.
+It is useful for local verification and internal tooling, but it is not the primary
+user-facing invocation path.
 
 ## Authoring Discipline
 

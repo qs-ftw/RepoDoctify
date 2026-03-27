@@ -53,12 +53,6 @@ def main() -> None:
         "trae": "Trae",
     }[args.platform]
     print(f"Restart {restart_target} to pick up the updated skill.")
-    print("Then use one of:")
-    print("  $repo-doctify")
-    print("  $repo-doctify plan")
-    print("  $repo-doctify md")
-    print("  $repo-doctify html")
-    print("  $repo-doctify feishu")
 
 
 if __name__ == "__main__":

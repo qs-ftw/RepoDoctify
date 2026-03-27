@@ -324,6 +324,8 @@ def _doc_cross_links(doc_id: str, plan: DocsetPlan) -> list[str]:
         "stack-and-entrypoints": ["overview", "code-reading-path", "development-guide"],
         "module-map": ["overview", "development-guide"],
         "development-guide": ["module-map", "code-reading-path", "overview"],
+        "bridge-topics": ["module-map", "code-reading-path", "evidence-guide"],
+        "evidence-guide": ["module-map", "stack-and-entrypoints", "bridge-topics"],
     }.get(doc_id, [])
     available = set(plan.documents)
     return [item for item in preferred if item in available]
@@ -355,6 +357,16 @@ def _doc_seed_points(doc_id: str, analysis: RepositoryAnalysis) -> list[str]:
         "development-guide": [
             "按改模型、改数据、改分词、改 checkpoint、改推理五类给切入点。",
             "强调当前仓缺测试时的最低验证策略。",
+        ],
+        "bridge-topics": [
+            "列出跨越多个模块的关键机制：依赖注入、插件系统、中间件/拦截器链、反射/动态派发。",
+            "对每个桥接机制，说明它在哪里被注册、在哪里被调用、为什么必须用这种方式而不是直接调用。",
+            "指出新人最容易在这里产生误解的两个点。",
+        ],
+        "evidence-guide": [
+            "说明如何通过测试文件、benchmark、assertion、日志、类型注解推断真实行为边界。",
+            "指出哪些文件既是规格说明又是验收标准。",
+            "说明如何区分文档声称的边界和实际运行时行为。",
         ],
     }.get(doc_id, [])
     return primary

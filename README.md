@@ -54,54 +54,6 @@ The default path should also generate:
 
 All generated artifacts should live outside the analyzed repository by default.
 
-## Runtime Surface
-
-The current v1 helper flow is:
-
-1. analyze the target repository
-2. build a default docset plan
-3. persist repository analysis and manifest data
-4. prepare a mode-specific prompt bundle for Markdown, HTML, or Feishu
-5. let the skill author the final content from that bundle
-
-The main Python compatibility entrypoint is `repodoctify.run_repodoctify(...)`.
-The skill-facing runtime entrypoint is `repodoctify.run_repodoctify_request(...)`.
-
-The bundled CLI entrypoints are:
-
-- `python -m repodoctify`
-- `repodoctify`
-
-It always writes into an external workspace with these subdirectories:
-
-- `plan/`
-- `ir/`
-- `artifacts/`
-- `prompt/`
-- `md/`
-- `html/`
-- `publish/`
-- `logs/`
-
-The internal harness supports:
-
-- default no-arg behavior -> Markdown prompt bundle
-- `plan` -> docset structure only
-- `md` -> Markdown prompt bundle
-- `html` -> HTML prompt bundle
-- `feishu` -> Feishu prompt bundle + publish handoff
-
-The runtime and harness also support `--reuse-latest` so a later render step can
-reuse an existing external workspace and shared IR instead of recomputing from
-scratch.
-
-Target repository selection stays low-interruption by default:
-
-- if `--repo` is omitted, the current working directory is treated as the target
-- if an explicit repo path is passed, that path wins
-- the shared runtime also supports a strict conflict check so skill orchestration can stop early when the requested repo conflicts with the current repo context
-- runtime results also record the resolved repo path and the resolution reason so skill orchestration can inspect what happened
-
 ## Install And Use
 
 Run tests with:
@@ -113,9 +65,8 @@ pytest -v
 For local platform installs, use:
 
 ```bash
-python3 scripts/install_local_skill.py
+python3 scripts/install_local_skill.py --platform claude  # default
 python3 scripts/install_local_skill.py --platform codex
-python3 scripts/install_local_skill.py --platform claude
 python3 scripts/install_local_skill.py --platform trae
 ```
 
@@ -132,9 +83,6 @@ $repo-doctify md
 $repo-doctify html
 $repo-doctify feishu
 ```
-
-Use the default form when you want the Markdown generation flow. Use the short
-forms when you want to force a specific mode.
 
 For Codex remote installation, the intended low-parameter path is:
 
@@ -167,14 +115,6 @@ Current support quality is:
 - strong support: Python, TypeScript, JavaScript
 - structured support: Go, Rust, Java
 - fallback support: generic repositories with conservative reading guidance
-
-The bundled CLI remains useful as an internal developer harness when testing the repo
-outside Codex:
-
-```bash
-python -m repodoctify --repo /path/to/repo
-python -m repodoctify html --repo /path/to/repo --reuse-latest
-```
 
 Build all release bundles with:
 
