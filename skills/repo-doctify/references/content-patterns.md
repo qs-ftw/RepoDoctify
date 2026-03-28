@@ -77,3 +77,93 @@ Good candidates:
 - config propagation
 - tests as authority
 - docs-source mismatch
+
+### Validity Markers
+
+When older materials conflict with current source of truth, label the gap explicitly near the relevant claim rather than in a disclaimer at the end:
+
+| Marker | Meaning | When to use |
+|--------|---------|-------------|
+| `已被源码验证` | Conclusion confirmed by source code or first-party evidence | Primary conclusions |
+| `部分吻合，需注意差异` | Older material overlaps but details differ | Supplementary older materials |
+| `疑似过期，仅供背景参考` | May no longer be accurate | Resource library, historical wiki |
+
+## Main Chain Document Template
+
+Answer these questions:
+
+1. Which chain does this doc explain
+2. Which files to read first (ordered: contract → main source → tests → config)
+3. One primary diagram (flowchart for process chains, sequenceDiagram for call chains)
+4. The chain explained stage by stage
+5. 1-2 source anchors with 1-4 sentences of explanation each
+6. Where the chain most often breaks
+7. What to read next
+
+## Overview Document Template
+
+Answer these questions:
+
+1. What the repository solves and its boundaries
+2. Its primary responsibilities
+3. How a newcomer should read it
+4. What each main module owns
+5. What each key technology does in this repo (use the Tech Stack Pattern, not bare nouns)
+6. One high-value diagram
+7. Common misconceptions
+8. What to read next
+
+## Source Anchor Rules
+
+Add source snippets when abstract description is insufficient. Good candidates:
+
+- startup and initialization
+- routing registration
+- call chain or generation chain handoffs
+- state writeback
+- timeout, retry, rollback
+- trace propagation
+- permission boundaries
+
+Source anchor rules:
+
+| Aspect | Rule |
+|--------|------|
+| Length | Short — reader can scan in 1 minute |
+| Purpose | Explain one mechanism, not dump a file |
+| Accompanying text | 1-4 sentences after the snippet |
+| Value | Point to "why this matters" and "where to continue reading" |
+
+Never leave a source anchor naked. Always pair it with a sentence that tells the reader where to look next.
+
+## Inter-Document Linking
+
+When a document references another learning doc in this docset — especially navigation sentences like "next read X", "return to overview", or "see also Y" — make the title a live hyperlink. Do not leave navigation links as plain text.
+
+Apply this to homepage reading routes, bridge doc return paths, and "next to read" recommendations.
+
+## Public Repository URLs
+
+In user-visible learning docs, prefer public git repository URLs over local absolute paths.
+
+Use:
+
+- the public git URL
+- quick entry points
+- Git links
+
+Do not surface `/root/...` or other local absolute paths as primary entry points.
+
+## Tech Stack Table Format
+
+Prefer a structured table over prose lists for tech stack sections:
+
+| Technology | Role in this repo | Key file | Official docs |
+|------------|-------------------|---------|---------------|
+| FastAPI | HTTP API surface | `api.py` | [link] |
+
+Rules:
+- One row per significant dependency (runtime, database, message queue, observability, AI orchestration)
+- Do not list every transitive dependency
+- Link to official docs, not random blog posts
+- Avoid repeating upstream marketing copy

@@ -49,6 +49,7 @@ def test_repo_owns_reference_set():
         "skills/repo-doctify/references/feishu-runtime-model.md",
         "skills/repo-doctify/references/markdown-rendering-rules.md",
         "skills/repo-doctify/references/html-rendering-rules.md",
+        "skills/repo-doctify/references/rendering-rules.md",
         "skills/repo-doctify/references/feishu-rendering-handoff.md",
     ]:
         assert Path(rel).exists(), rel

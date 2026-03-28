@@ -42,6 +42,15 @@ If the task is an update to an existing document and a valid `user_access_token`
 - for board-first charts, keep the local placeholder keys as the source of truth and do the board conversion after the doc content lands
 - for local Markdown -> docx publication with real tables and controlled block writes, prefer reusing `scripts/publish_python_bridge_doc.py` over rebuilding a one-off block writer
 
+## Real Table Block Types
+
+Markdown pipe tables (`| col1 | col2 |`) do not guarantee Feishu renders a real table block. To get a real Feishu table:
+
+- table block: `block_type=31`
+- table cell block: `block_type=32`
+
+When the rendering quality of a table is a goal, pipe-table text alone is not sufficient. Verify block readback confirms `31/32` block types before claiming a real table was published.
+
 If the task is an update to an existing document and `user_access_token` is not currently stable:
 
 - try user-auth recovery before doing anything else
@@ -388,3 +397,35 @@ Always report limits such as:
 - user authorization is pending and work is paused for manual completion
 - no direct permission proof if the tool only accepted the mutation request
 - partial automation with remaining manual follow-up
+
+## Anti-Patterns
+
+### Content organization
+
+| Anti-pattern | Why it is wrong |
+|-------------|----------------|
+| Organizing the docset by directory tree | Readers learn a reading path, not an author's map |
+| Only overview, no main chain | First-timers cannot find the critical path |
+| Only module docs, no bridge docs | Conceptual barriers remain unresolved |
+| Tech stack as bare noun list | No actionable value to the reader |
+| Only file names, no source anchors | Abstract cost is too high |
+| "Next to read" as plain text | Navigation value is lost |
+
+### Publishing and operations
+
+| Anti-pattern | Why it is wrong |
+|-------------|----------------|
+| Republishing a new version when auth fails | Creates version sprawl and hides the real permission problem |
+| Overwriting remote docs with stale local drafts | May erase remote-only manual edits |
+| Full-document rewrite as the default for existing docs | High block churn, high risk |
+| Publishing homepage before child docs | Child doc links are unstable at that point |
+| Claiming completion after raw-content readback only | Links, diagram blocks, and tables may not be verified |
+
+### Diagrams and tables
+
+| Anti-pattern | Why it is wrong |
+|-------------|----------------|
+| Using the same diagram type for every topic | Cannot express the true focus |
+| Mermaid left as a code block | Reader does not see a chart |
+| Pipe table text assumed to render as a real Feishu table | Block type may not be `31/32` |
+| Adding too many diagrams per document | Increases reading cost instead of reducing it |

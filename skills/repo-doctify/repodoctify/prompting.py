@@ -257,6 +257,28 @@ def _build_output_contract(plan: DocsetPlan, command: str) -> dict:
     }
 
 
+def _doc_diagram(doc_id: str) -> dict | None:
+    """Return diagram spec if this doc type requires a diagram, else None."""
+    specs: dict[str, dict] = {
+        "homepage": {
+            "type": "mindmap",
+            "after_section": "推荐阅读路线",
+            "content": "All doc types in this docset as a reading route mindmap",
+        },
+        "module-map": {
+            "type": "classDiagram",
+            "after_section": "模块协作关系",
+            "content": "Key modules, their responsibilities, and collaboration arrows",
+        },
+        "code-reading-path": {
+            "type": "flowchart",
+            "after_section": "主链概览",
+            "content": "Primary code reading chain from entry to output",
+        },
+    }
+    return specs.get(doc_id)
+
+
 def _build_document_prompts(analysis: RepositoryAnalysis, plan: DocsetPlan, command: str) -> dict:
     return {
         "mode": _mode_slug(command),
@@ -271,6 +293,7 @@ def _build_document_prompts(analysis: RepositoryAnalysis, plan: DocsetPlan, comm
                 "must_include_paths": _doc_evidence_paths(doc_id, analysis)[:4],
                 "seed_points": _doc_seed_points(doc_id, analysis),
                 "cross_links": _doc_cross_links(doc_id, plan),
+                "diagram": _doc_diagram(doc_id),
             }
             for doc_id in plan.documents
         ],
@@ -422,10 +445,9 @@ def _build_authoring_brief(
             "- For '先看哪些文件' or other ordered reading sections, use numbered lists instead of tables unless comparison is genuinely horizontal.",
             "- Mention uncertainty explicitly when the repository does not provide enough evidence.",
             "- When generating Markdown or HTML, preserve Mermaid blocks when they meaningfully clarify the structure.",
-            "- Actively add Mermaid diagrams where they clarify complex relationships: use `mindmap` for homepage/index, `sequenceDiagram` for call/request chains, `erDiagram` for data models, `classDiagram` for module responsibilities, `flowchart` for process stages. Most docs need only 1-2 diagrams — do not diagram for its own sake.",
-            "- Load `references/markdown-rendering-rules.md` for full Markdown diagram placement and type-selection guidance.",
+            "- Actively add diagrams and tables where they genuinely clarify structure. See `references/rendering-rules.md` for the decision table and design rules (diagrams: mindmap / sequenceDiagram / erDiagram / classDiagram / flowchart; tables for comparison, lookup, and index). For flowchart chains of 5+ steps, use `flowchart TD` (top-down) instead of `flowchart LR` — long LR chains render nodes too small to read. Every diagram and table must be accompanied by 1-3 sentences of explanation — never leave one naked.",
             "- Write the output files one at a time in the order listed by `prompt/write-targets.json`.",
-            "- Before writing each document, read its single current document task from `prompt/document-prompts.json` and answer only that document's question.",
+            "- Before writing each document, read its single current document task from `prompt/document-prompts.json` and answer only that document's question. If the document has a `diagram` field, add the required Mermaid diagram immediately after the `after_section` heading before continuing.",
             "- Do not keep exploring once the evidence is sufficient for the planned documents; switch to writing.",
             "- Do not stop after writing only homepage. For Markdown mode, you must complete all targets in a single run.",
             "- After writing each file, verify that it exists before moving to the next target.",
@@ -435,7 +457,7 @@ def _build_authoring_brief(
     if command == COMMAND_RENDER_MD:
         lines.extend(
             [
-                "- Load `references/markdown-rendering-rules.md` for full Markdown rendering guidance.",
+                "- Load `references/markdown-rendering-rules.md` for Markdown-specific rendering rules.",
                 "- For Markdown mode, prefer a single multi-file `apply_patch` that creates every missing `.md` target and `README.md` in one pass.",
                 "- After the multi-file write, run one bulk existence check using the command declared in `prompt/write-targets.json`.",
                 "- Do not pause for commentary after `homepage.md`; continue until every declared Markdown target exists.",
@@ -444,7 +466,7 @@ def _build_authoring_brief(
     if command == COMMAND_HTML:
         lines.extend(
             [
-                "- Load `references/html-rendering-rules.md` for full HTML rendering guidance.",
+                "- Load `references/html-rendering-rules.md` for HTML-specific rendering rules.",
             ]
         )
     if command == COMMAND_FEISHU:

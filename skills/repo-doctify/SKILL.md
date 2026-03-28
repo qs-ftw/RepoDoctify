@@ -209,6 +209,7 @@ Load these references as needed:
 - `references/docset-ir.md`
 - `references/markdown-rendering-rules.md`
 - `references/html-rendering-rules.md`
+- `references/rendering-rules.md`
 - `references/feishu-rendering-handoff.md`
 - `references/feishu-runtime-model.md`
 
