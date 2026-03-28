@@ -302,25 +302,56 @@ def _build_document_prompts(analysis: RepositoryAnalysis, plan: DocsetPlan, comm
 
 def _doc_question(doc_id: str) -> str:
     return {
-        "homepage": "这个仓库值不值得继续读，以及应该按什么顺序读。",
-        "overview": "这个仓库到底解决什么问题、核心对象是什么、边界在哪里。",
-        "code-reading-path": "第一次读仓最应该抓住哪几条主链，调用关系怎么串起来。",
-        "stack-and-entrypoints": "这个仓库从哪里被调用、怎么运行、关键技术栈是什么。",
-        "module-map": "顶层模块分别负责什么，互相如何配合。",
-        "development-guide": "第一次接手改功能时应该从哪几个文件切入，怎么降低改坏风险。",
-    }.get(doc_id, "这篇文档要回答的核心问题。")
+        "homepage": "What does this repository do and where do I start reading it?",
+        "code-reading-path": "What are the concrete entry-to-output call chains and where do they branch?",
+        "stack-and-entrypoints": "How is this repository invoked and what tech stack does it depend on?",
+        "module-map": "What does each module own in isolation and how do they collaborate?",
+        "development-guide": "How do I safely make a targeted change in this repository?",
+        "bridge-topics": "Which cross-module mechanisms are most likely to confuse a first-time reader?",
+        "evidence-guide": "What types of evidence should I consult to determine what is actually true?",
+    }.get(doc_id, "What question does this document answer?")
 
 
 def _doc_required_sections(doc_id: str) -> list[str]:
-    defaults = {
-        "homepage": ["仓库定位", "推荐阅读路线", "当前缺失项", "文档索引"],
-        "overview": ["仓库目标", "关键事实", "核心对象", "边界与不确定性"],
-        "code-reading-path": ["主链概览", "主链一", "主链二", "最先看哪些文件"],
-        "stack-and-entrypoints": ["最接近真实入口的装配点", "运行边界", "分词与数据入口", "技术栈判断"],
-        "module-map": ["模块总览", "逐模块职责", "模块协作关系"],
-        "development-guide": ["改动前先确认什么", "按变更类型切入", "高风险点", "最小验证路径"],
-    }
-    return defaults.get(doc_id, ["核心内容"])
+    return {
+        "homepage": [
+            "仓库做什么",
+            "文档索引",
+            "推荐阅读路线",
+        ],
+        "code-reading-path": [
+            "主链概览",
+            "主链细节",
+            "测试链路",
+            "优先入口文件",
+        ],
+        "stack-and-entrypoints": [
+            "入口装配",
+            "运行约束",
+            "依赖技术栈",
+        ],
+        "module-map": [
+            "模块总览",
+            "模块职责表",
+            "协作接口",
+        ],
+        "development-guide": [
+            "改动前确认",
+            "按文件类型切入",
+            "高风险区域",
+            "最小验证路径",
+        ],
+        "bridge-topics": [
+            "桥接机制清单",
+            "误解高发点",
+            "调试入口",
+        ],
+        "evidence-guide": [
+            "证据来源清单",
+            "边界推断方法",
+            "文档偏差处理",
+        ],
+    }.get(doc_id, ["核心内容"])
 
 
 def _doc_evidence_paths(doc_id: str, analysis: RepositoryAnalysis) -> list[str]:
@@ -341,12 +372,11 @@ def _doc_evidence_paths(doc_id: str, analysis: RepositoryAnalysis) -> list[str]:
 
 def _doc_cross_links(doc_id: str, plan: DocsetPlan) -> list[str]:
     preferred = {
-        "homepage": ["overview", "code-reading-path", "stack-and-entrypoints", "module-map", "development-guide"],
-        "overview": ["code-reading-path", "module-map", "stack-and-entrypoints"],
-        "code-reading-path": ["overview", "stack-and-entrypoints", "module-map"],
-        "stack-and-entrypoints": ["overview", "code-reading-path", "development-guide"],
-        "module-map": ["overview", "development-guide"],
-        "development-guide": ["module-map", "code-reading-path", "overview"],
+        "homepage": ["code-reading-path", "stack-and-entrypoints", "module-map", "development-guide"],
+        "code-reading-path": ["stack-and-entrypoints", "module-map"],
+        "stack-and-entrypoints": ["code-reading-path", "development-guide"],
+        "module-map": ["development-guide"],
+        "development-guide": ["module-map", "code-reading-path"],
         "bridge-topics": ["module-map", "code-reading-path", "evidence-guide"],
         "evidence-guide": ["module-map", "stack-and-entrypoints", "bridge-topics"],
     }.get(doc_id, [])
@@ -355,36 +385,30 @@ def _doc_cross_links(doc_id: str, plan: DocsetPlan) -> list[str]:
 
 
 def _doc_seed_points(doc_id: str, analysis: RepositoryAnalysis) -> list[str]:
-    primary = {
+    return {
         "homepage": [
-            f"说明 `{analysis.profile.repo_label}` 更像训练/推理内核而不是完整应用。",
-            "明确指出仓库缺少 README、tests、显式 CLI 或配置入口时，新人应如何调整阅读策略。",
-            "把阅读路线压成 30 分钟主心智模型和接手维护两条路径。",
-        ],
-        "overview": [
-            "先定义仓库目标，再说明仓库边界和缺失项。",
-            "把核心对象收敛到模型、数据装载、分词器、checkpoint、推理引擎。",
+            "在'仓库做什么'中，用一两句话说明仓库的核心职责和边界，让读者判断这是否是他们要找的仓库。",
+            "在'文档索引'中列出本 docset 所有文档，回答每个文档解决什么问题。",
+            "推荐阅读路线按读者目标来命名（如'想快速了解整体思路'、'准备接手维护'），不要复制其他文档的具体文件清单。",
         ],
         "code-reading-path": [
-            "至少串出一条从 checkpoint 到生成 token 的推理链。",
-            "至少串出一条从 parquet 数据到训练 batch 的数据链。",
+            "回答'chain 上各环节是怎么串起来的'，描述调用顺序和数据流向，不展开各模块的隔离职责。",
+            "用 call-chain 视角描述 pipeline 各阶段，不写成 module-responsibility 视角。",
         ],
         "stack-and-entrypoints": [
-            "强调这里没有显式 CLI，最接近入口的是装配函数和可被外部导入的模块。",
-            "指出关键技术栈来自 PyTorch、parquet、分词器实现和高性能注意力路径。",
+            "回答'怎么调用这个仓库'和'依赖什么技术'，每行只写：技术名称 + 在本仓库的用途 + 来源文件。",
         ],
         "module-map": [
-            "逐个解释顶层关键文件，而不是只列目录。",
-            "把模块之间的协作关系说清楚。",
+            "回答'每个模块在隔离状态下负责什么'，描述各模块的输入、输出和职责，不展开内部实现细节。",
+            "在'协作接口'中描述模块之间的调用模式和依赖方向，不解释 chain 上的数据流向。",
         ],
         "development-guide": [
-            "按改模型、改数据、改分词、改 checkpoint、改推理五类给切入点。",
-            "强调当前仓缺测试时的最低验证策略。",
+            "按变更所涉及的文件类型来分类切入点，不按功能领域（如'改模型'、'改数据'）来分类。",
+            "在'最小验证路径'中说明如何设计一个不依赖完整测试套件的局部验证。",
         ],
         "bridge-topics": [
-            "列出跨越多个模块的关键机制：依赖注入、插件系统、中间件/拦截器链、反射/动态派发。",
-            "对每个桥接机制，说明它在哪里被注册、在哪里被调用、为什么必须用这种方式而不是直接调用。",
-            "指出新人最容易在这里产生误解的两个点。",
+            "每个桥接机制说明：注册位置、调用位置、为什么必须用这种方式、误解高发点。",
+            "只列出真正容易混淆的跨模块机制，不强行制造桥接章节。",
         ],
         "evidence-guide": [
             "说明如何通过测试文件、benchmark、assertion、日志、类型注解推断真实行为边界。",
@@ -392,7 +416,6 @@ def _doc_seed_points(doc_id: str, analysis: RepositoryAnalysis) -> list[str]:
             "说明如何区分文档声称的边界和实际运行时行为。",
         ],
     }.get(doc_id, [])
-    return primary
 
 
 def _build_authoring_brief(
@@ -452,6 +475,7 @@ def _build_authoring_brief(
             "- Do not stop after writing only homepage. For Markdown mode, you must complete all targets in a single run.",
             "- After writing each file, verify that it exists before moving to the next target.",
             "- Do not glob-read every source file. Follow `reading_budget.priority_paths` first and stay within the budget unless a hard gap remains.",
+            "- Each document must stay within its own question scope. If content answers a different document's question, cross-link to that document instead of explaining it here.",
         ]
     )
     if command == COMMAND_RENDER_MD:
@@ -461,6 +485,16 @@ def _build_authoring_brief(
                 "- For Markdown mode, prefer a single multi-file `apply_patch` that creates every missing `.md` target and `README.md` in one pass.",
                 "- After the multi-file write, run one bulk existence check using the command declared in `prompt/write-targets.json`.",
                 "- Do not pause for commentary after `homepage.md`; continue until every declared Markdown target exists.",
+                "",
+                "## Post-Generation Overlap Review",
+                "",
+                "After writing all Markdown targets and passing the existence check, run a self-review:",
+                "",
+                "1. Read every generated document.",
+                "2. For each adjacent document pair (homepage↔code-reading-path, code-reading-path↔module-map, stack↔code-reading-path), check whether any paragraph answers a question that belongs to the other document.",
+                "3. If overlap is found, revise **only the overlapping paragraphs** in the document that is further from its primary question owner. Prefer: (a) cut the duplicate and add a cross-link, or (b) rewrite it to address a sub-question that is unique to its own document.",
+                "4. After revising, re-verify the file exists.",
+                "5. Do NOT revise the entire document — only the overlapping paragraphs.",
             ]
         )
     if command == COMMAND_HTML:
